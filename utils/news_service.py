@@ -1,10 +1,11 @@
 import os
 import requests
 from datetime import datetime, timedelta
+from tavily import TavilyClient
 
 def get_financial_news(query):
     """
-    Get relevant financial news (currently using fallback system)
+    Get relevant financial news using the Tavily API
     
     Args:
         query (str): The user's query to search for relevant news
@@ -13,11 +14,105 @@ def get_financial_news(query):
         str: A summary of relevant financial news
     """
     try:
-        # For now, using the fallback news system
-        # In a future update, a proper news API integration will be added
+        # Get Tavily API key from environment variables
+        tavily_api_key = os.getenv("TAVILY_API_KEY")
         
+        if not tavily_api_key:
+            print("Tavily API key not found. Using fallback news system.")
+            # Parse query to customize the fallback news
+            financial_terms = [
+                "RBI", "SEBI", "NSE", "BSE", "Sensex", "Nifty", 
+                "Indian economy", "fiscal policy", "monetary policy",
+                "investment", "stocks", "mutual funds", "tax", "budget",
+                "insurance", "retirement", "real estate", "gold"
+            ]
+            
+            # Check if any financial terms are in the query
+            mentioned_terms = []
+            for term in financial_terms:
+                if term.lower() in query.lower():
+                    mentioned_terms.append(term)
+            
+            return get_fallback_news(mentioned_terms, query)
+        
+        # Initialize Tavily client
+        client = TavilyClient(api_key=tavily_api_key)
+        
+        # Parse user query to extract key topics
+        search_query = f"Indian finance {query}"
+        
+        # Add common financial terms for better results
+        financial_terms = [
+            "RBI", "SEBI", "NSE", "BSE", "Sensex", "Nifty", 
+            "Indian economy", "fiscal policy", "monetary policy"
+        ]
+        
+        for term in financial_terms:
+            if term.lower() in query.lower():
+                search_query = f"{term} {query} latest news India"
+                break
+        
+        # Set additional parameters
+        search_params = {
+            "query": search_query,
+            "search_depth": "advanced",
+            "include_domains": [
+                "economictimes.indiatimes.com",
+                "livemint.com",
+                "moneycontrol.com",
+                "financialexpress.com",
+                "business-standard.com",
+                "thehindubusinessline.com",
+                "rbi.org.in",
+                "sebi.gov.in",
+                "nseindia.com",
+                "bseindia.com"
+            ],
+            "max_results": 5,
+            "time_window": "1w"  # Last week
+        }
+        
+        # Execute search
+        search_response = client.search(**search_params)
+        
+        # Format the results
+        if not search_response.get("results"):
+            return "No relevant financial news found for your query."
+        
+        formatted_news = "## Relevant Financial News:\n\n"
+        
+        for i, result in enumerate(search_response.get("results", [])[:5]):
+            title = result.get("title", "No title")
+            content = result.get("content", "No content")
+            url = result.get("url", "#")
+            published_date = result.get("published_date", "Unknown date")
+            
+            # Format the date if available
+            if published_date and published_date != "Unknown date":
+                try:
+                    date_obj = datetime.fromisoformat(published_date.replace("Z", "+00:00"))
+                    formatted_date = date_obj.strftime("%d %b %Y")
+                except:
+                    formatted_date = published_date
+            else:
+                formatted_date = "Recent"
+            
+            # Add to formatted news
+            formatted_news += f"### {i+1}. {title}\n"
+            formatted_news += f"**Date:** {formatted_date}\n\n"
+            
+            # Truncate content if too long
+            if len(content) > 300:
+                content = content[:300] + "..."
+            
+            formatted_news += f"{content}\n\n"
+            formatted_news += f"[Read more]({url})\n\n"
+        
+        return formatted_news
+    
+    except Exception as e:
+        print(f"Error in get_financial_news: {str(e)}")
         # Parse query to customize the fallback news
-        # Add common financial terms for better customization
         financial_terms = [
             "RBI", "SEBI", "NSE", "BSE", "Sensex", "Nifty", 
             "Indian economy", "fiscal policy", "monetary policy",
@@ -32,10 +127,6 @@ def get_financial_news(query):
                 mentioned_terms.append(term)
         
         return get_fallback_news(mentioned_terms, query)
-    
-    except Exception as e:
-        print(f"Error in get_financial_news: {str(e)}")
-        return get_fallback_news([], query)
 
 def get_fallback_news(mentioned_terms=None, query=""):
     """
