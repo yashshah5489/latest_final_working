@@ -488,7 +488,7 @@ def display_stock_analysis():
                 st.plotly_chart(fig, use_container_width=True)
                 
                 # Additional analysis tabs
-                stock_analysis_tabs = st.tabs(["Key Metrics", "Moving Averages", "Performance Analysis"])
+                stock_analysis_tabs = st.tabs(["Key Metrics", "Technical Indicators", "Fundamental Data", "Moving Averages"])
                 
                 with stock_analysis_tabs[0]:
                     # Key Metrics
@@ -501,7 +501,8 @@ def display_stock_analysis():
                             "Forward PE": stock_info.get('forwardPE', 'N/A'),
                             "PEG Ratio": stock_info.get('pegRatio', 'N/A'),
                             "Price to Book": stock_info.get('priceToBook', 'N/A'),
-                            "Dividend Yield": f"{stock_info.get('dividendYield', 0) * 100:.2f}%" if stock_info.get('dividendYield') else "N/A"
+                            "Book Value": stock_info.get('bookValue', 'N/A'),
+                            "Dividend Yield": f"{stock_info.get('dividendYield', 0):.2f}%" if stock_info.get('dividendYield') is not None else "N/A"
                         }
                         
                         # Avoid dataframe conversion issues by formatting the data directly with HTML
@@ -512,6 +513,181 @@ def display_stock_analysis():
                         
                         # Use markdown to display the table
                         st.markdown(metrics_html, unsafe_allow_html=True)
+                        
+                    with metrics_col2:
+                        st.subheader("Market Metrics")
+                        market_data = {
+                            "Market Cap": f"₹{stock_info.get('marketCap', 0)/10000000:,.2f}Cr" if stock_info.get('marketCap') else 'N/A',
+                            "Beta": f"{stock_info.get('beta', 'N/A')}",
+                            "Volume": f"{stock_info.get('volume', 0):,}",
+                            "Avg Volume": f"{stock_info.get('averageVolume', 0):,}",
+                            "Exchange": stock_info.get('exchange', 'N/A'),
+                            "Currency": stock_info.get('currency', 'INR')
+                        }
+                        
+                        market_html = "<table width='100%'><tr><th>Metric</th><th>Value</th></tr>"
+                        for metric, value in market_data.items():
+                            market_html += f"<tr><td>{metric}</td><td>{value}</td></tr>"
+                        market_html += "</table>"
+                        
+                        st.markdown(market_html, unsafe_allow_html=True)
+                
+                with stock_analysis_tabs[1]:
+                    # Technical Indicators Tab
+                    st.subheader("Technical Indicators")
+                    
+                    # Check if we have technical indicators available
+                    if 'technicalIndicators' in stock_info and stock_info['technicalIndicators']:
+                        tech_indicators = stock_info['technicalIndicators']
+                        
+                        # Create multiple columns for better display
+                        t_col1, t_col2, t_col3 = st.columns(3)
+                        
+                        with t_col1:
+                            # Moving Averages vs Price
+                            st.markdown("#### Moving Averages")
+                            ma_data = {
+                                "SMA20": tech_indicators.get('sma20', 'N/A'),
+                                "SMA50": tech_indicators.get('sma50', 'N/A'),
+                                "SMA200": tech_indicators.get('sma200', 'N/A'),
+                                "EMA20": tech_indicators.get('ema20', 'N/A'),
+                                "Current Price": stock_info.get('currentPrice', 'N/A')
+                            }
+                            
+                            # Color formatting for MAs vs price
+                            ma_html = "<table width='100%'><tr><th>Indicator</th><th>Value</th></tr>"
+                            price = stock_info.get('currentPrice', 0)
+                            for indicator, value in ma_data.items():
+                                if indicator == "Current Price":
+                                    ma_html += f"<tr><td>{indicator}</td><td>{value:.2f}</td></tr>"
+                                else:
+                                    if isinstance(value, (int, float)) and price:
+                                        color = "green" if value < price else "red" if value > price else "black"
+                                        ma_html += f"<tr><td>{indicator}</td><td style='color:{color}'>{value:.2f}</td></tr>"
+                                    else:
+                                        ma_html += f"<tr><td>{indicator}</td><td>N/A</td></tr>"
+                            ma_html += "</table>"
+                            
+                            st.markdown(ma_html, unsafe_allow_html=True)
+                        
+                        with t_col2:
+                            # Momentum Indicators
+                            st.markdown("#### Momentum Indicators")
+                            
+                            # RSI
+                            rsi = tech_indicators.get('rsi', 'N/A')
+                            if isinstance(rsi, (int, float)):
+                                rsi_color = "red" if rsi > 70 else "green" if rsi < 30 else "black"
+                                rsi_text = f"<span style='color:{rsi_color}'>{rsi:.2f}</span>"
+                            else:
+                                rsi_text = "N/A"
+                                
+                            # MACD
+                            macd = tech_indicators.get('macd', 'N/A')
+                            macd_signal = tech_indicators.get('macdSignal', 'N/A')
+                            if isinstance(macd, (int, float)) and isinstance(macd_signal, (int, float)):
+                                macd_color = "green" if macd > macd_signal else "red"
+                                macd_text = f"<span style='color:{macd_color}'>{macd:.2f}</span>"
+                                signal_text = f"{macd_signal:.2f}"
+                            else:
+                                macd_text = "N/A"
+                                signal_text = "N/A"
+                                
+                            # Stochastic
+                            stoch_k = tech_indicators.get('stochK', 'N/A')
+                            stoch_d = tech_indicators.get('stochD', 'N/A')
+                            if isinstance(stoch_k, (int, float)):
+                                stoch_color = "red" if stoch_k > 80 else "green" if stoch_k < 20 else "black"
+                                stoch_k_text = f"<span style='color:{stoch_color}'>{stoch_k:.2f}</span>"
+                            else:
+                                stoch_k_text = "N/A"
+                                
+                            momentum_html = "<table width='100%'><tr><th>Indicator</th><th>Value</th><th>Signal</th></tr>"
+                            momentum_html += f"<tr><td>RSI (14)</td><td>{rsi_text}</td><td>Overbought >70, Oversold <30</td></tr>"
+                            momentum_html += f"<tr><td>MACD</td><td>{macd_text}</td><td>{signal_text}</td></tr>"
+                            momentum_html += f"<tr><td>Stochastic %K</td><td>{stoch_k_text}</td><td>{stoch_d:.2f if isinstance(stoch_d, (int, float)) else 'N/A'}</td></tr>"
+                            momentum_html += "</table>"
+                            
+                            st.markdown(momentum_html, unsafe_allow_html=True)
+                            
+                        with t_col3:
+                            # Volatility & Volume Indicators
+                            st.markdown("#### Volatility & Volume")
+                            
+                            # Bollinger Bands
+                            upper_band = tech_indicators.get('upperBand', 'N/A')
+                            lower_band = tech_indicators.get('lowerBand', 'N/A')
+                            price = stock_info.get('currentPrice', 0)
+                            
+                            if isinstance(upper_band, (int, float)) and isinstance(lower_band, (int, float)) and price:
+                                band_status = "Near Upper Band" if price > (upper_band * 0.95) else "Near Lower Band" if price < (lower_band * 1.05) else "Middle"
+                                band_color = "red" if band_status == "Near Upper Band" else "green" if band_status == "Near Lower Band" else "black"
+                            else:
+                                band_status = "N/A"
+                                band_color = "black"
+                                
+                            # ATR - Volatility
+                            atr = tech_indicators.get('atr', 'N/A')
+                            
+                            # OBV - Volume trend
+                            obv = tech_indicators.get('obv', 'N/A')
+                            
+                            vol_html = "<table width='100%'><tr><th>Indicator</th><th>Value</th></tr>"
+                            vol_html += f"<tr><td>BB Upper</td><td>{upper_band:.2f if isinstance(upper_band, (int, float)) else 'N/A'}</td></tr>"
+                            vol_html += f"<tr><td>BB Lower</td><td>{lower_band:.2f if isinstance(lower_band, (int, float)) else 'N/A'}</td></tr>"
+                            vol_html += f"<tr><td>Position</td><td style='color:{band_color}'>{band_status}</td></tr>"
+                            vol_html += f"<tr><td>ATR (14)</td><td>{atr:.2f if isinstance(atr, (int, float)) else 'N/A'}</td></tr>"
+                            vol_html += f"<tr><td>OBV</td><td>{obv:,.0f if isinstance(obv, (int, float)) else 'N/A'}</td></tr>"
+                            vol_html += "</table>"
+                            
+                            st.markdown(vol_html, unsafe_allow_html=True)
+                    else:
+                        st.info("Technical indicators not available for this stock or timeframe. Try selecting a different time period.")
+                
+                with stock_analysis_tabs[2]:
+                    # Fundamental Data Tab
+                    st.subheader("Fundamental Data")
+                    
+                    # Create multiple columns for better display
+                    f_col1, f_col2 = st.columns(2)
+                    
+                    with f_col1:
+                        st.markdown("#### Profitability Metrics")
+                        
+                        profit_data = {
+                            "Profit Margin": f"{stock_info.get('profitMargins', 'N/A'):.2f}%" if stock_info.get('profitMargins') is not None else "N/A",
+                            "Operating Margin": f"{stock_info.get('operatingMargins', 'N/A'):.2f}%" if stock_info.get('operatingMargins') is not None else "N/A",
+                            "Return on Assets": f"{stock_info.get('returnOnAssets', 'N/A'):.2f}%" if stock_info.get('returnOnAssets') is not None else "N/A",
+                            "Return on Equity": f"{stock_info.get('returnOnEquity', 'N/A'):.2f}%" if stock_info.get('returnOnEquity') is not None else "N/A",
+                            "Revenue Growth": f"{stock_info.get('revenueGrowth', 'N/A'):.2f}%" if stock_info.get('revenueGrowth') is not None else "N/A",
+                            "Earnings Growth": f"{stock_info.get('earningsGrowth', 'N/A'):.2f}%" if stock_info.get('earningsGrowth') is not None else "N/A"
+                        }
+                        
+                        profit_html = "<table width='100%'><tr><th>Metric</th><th>Value</th></tr>"
+                        for metric, value in profit_data.items():
+                            profit_html += f"<tr><td>{metric}</td><td>{value}</td></tr>"
+                        profit_html += "</table>"
+                        
+                        st.markdown(profit_html, unsafe_allow_html=True)
+                        
+                    with f_col2:
+                        st.markdown("#### Financial Health")
+                        
+                        health_data = {
+                            "Total Cash": f"₹{stock_info.get('totalCash', 0)/10000000:,.2f}Cr" if stock_info.get('totalCash') else "N/A",
+                            "Total Debt": f"₹{stock_info.get('totalDebt', 0)/10000000:,.2f}Cr" if stock_info.get('totalDebt') else "N/A",
+                            "Debt to Equity": stock_info.get('debtToEquity', 'N/A'),
+                            "Current Ratio": stock_info.get('currentRatio', 'N/A'),
+                            "Sector": stock_info.get('sector', 'N/A'),
+                            "Industry": stock_info.get('industry', 'N/A')
+                        }
+                        
+                        health_html = "<table width='100%'><tr><th>Metric</th><th>Value</th></tr>"
+                        for metric, value in health_data.items():
+                            health_html += f"<tr><td>{metric}</td><td>{value}</td></tr>"
+                        health_html += "</table>"
+                        
+                        st.markdown(health_html, unsafe_allow_html=True)
                     
                     with metrics_col2:
                         st.subheader("Technical Indicators")

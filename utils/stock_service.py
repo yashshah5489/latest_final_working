@@ -7,7 +7,7 @@ import json
 
 def get_stock_data(ticker, period="1mo", interval="1d"):
     """
-    Fetch stock data from Yahoo Finance
+    Fetch stock data from Yahoo Finance using the Ticker API
     
     Args:
         ticker (str): Stock ticker symbol (add .NS for NSE, .BO for BSE)
@@ -37,15 +37,16 @@ def get_stock_data(ticker, period="1mo", interval="1d"):
             if "Nifty50" in ticker:
                 ticker = ticker.split(" (")[0] + ".NS"
             elif "Sensex" in ticker:
-                ticker = ticker.split(" (")[0] + ".NS"
+                ticker = ticker.split(" (")[0] + ".BO"  # Use BSE extension for Sensex stocks
             elif "^" in ticker or "NIFTY" in ticker.upper():
                 # Extract index symbol from format like "Nifty 50 (^NSEI)"
                 ticker = ticker.split(" (")[1].rstrip(")")
             
-        print(f"Downloading data for ticker: {ticker}")
+        print(f"Getting historical data for: {ticker}")
         
-        # Fetch data with auto adjust ON to fix issues with the Adj Close column
-        stock_data = yf.download(ticker, period=period, interval=interval, progress=False, auto_adjust=True)
+        # Use Ticker API instead of download function
+        stock = yf.Ticker(ticker)
+        stock_data = stock.history(period=period, interval=interval, auto_adjust=True)
         
         if stock_data.empty:
             print(f"No data found for ticker {ticker}")
@@ -55,9 +56,10 @@ def get_stock_data(ticker, period="1mo", interval="1d"):
                 # If NSE ticker doesn't work, try BSE
                 alternative = ticker.replace(".NS", ".BO")
                 print(f"Trying BSE alternative: {alternative}")
-                stock_data = yf.download(alternative, period=period, interval=interval, progress=False, auto_adjust=True)
+                alt_stock = yf.Ticker(alternative)
+                stock_data = alt_stock.history(period=period, interval=interval, auto_adjust=True)
                 
-                if not stock_data.empty and 'Close' in stock_data.columns:
+                if not stock_data.empty and len(stock_data) > 0:
                     print(f"Found data with BSE extension")
                     ticker = alternative  # Update ticker to the working alternative
             
@@ -68,9 +70,10 @@ def get_stock_data(ticker, period="1mo", interval="1d"):
                 else:
                     alternative = ticker.replace(".BS", ".NS")
                 print(f"Trying NSE alternative: {alternative}")
-                stock_data = yf.download(alternative, period=period, interval=interval, progress=False, auto_adjust=True)
+                alt_stock = yf.Ticker(alternative)
+                stock_data = alt_stock.history(period=period, interval=interval, auto_adjust=True)
                 
-                if not stock_data.empty and 'Close' in stock_data.columns:
+                if not stock_data.empty and len(stock_data) > 0:
                     print(f"Found data with NSE extension")
                     ticker = alternative  # Update ticker to the working alternative
             
@@ -79,57 +82,53 @@ def get_stock_data(ticker, period="1mo", interval="1d"):
                 # First try NSE (more liquid market usually)
                 nse_alternative = f"{ticker}.NS"
                 print(f"Trying with NSE extension: {nse_alternative}")
-                stock_data = yf.download(nse_alternative, period=period, interval=interval, progress=False, auto_adjust=True)
+                nse_stock = yf.Ticker(nse_alternative)
+                stock_data = nse_stock.history(period=period, interval=interval, auto_adjust=True)
                 
-                if not stock_data.empty and 'Close' in stock_data.columns:
+                if not stock_data.empty and len(stock_data) > 0:
                     print(f"Found data with NSE extension")
                     ticker = nse_alternative  # Update ticker to the working alternative
                 else:
                     # If NSE fails, try BSE
                     bse_alternative = f"{ticker}.BO"
                     print(f"Trying with BSE extension: {bse_alternative}")
-                    stock_data = yf.download(bse_alternative, period=period, interval=interval, progress=False, auto_adjust=True)
+                    bse_stock = yf.Ticker(bse_alternative)
+                    stock_data = bse_stock.history(period=period, interval=interval, auto_adjust=True)
                     
-                    if not stock_data.empty and 'Close' in stock_data.columns:
+                    if not stock_data.empty and len(stock_data) > 0:
                         print(f"Found data with BSE extension")
                         ticker = bse_alternative  # Update ticker to the working alternative
         
-        if stock_data.empty:
-            print(f"Still no data found for {ticker} after trying alternatives")
+        if stock_data.empty or len(stock_data) == 0:
+            print(f"Still no data found for {ticker} after trying all alternatives")
             return None
         
-        # When auto_adjust is True, we have Open, High, Low, Close, and Volume
-        # "Adj Close" is not present, but all prices are already adjusted
+        # Check for expected columns
         expected_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
+        missing_columns = [col for col in expected_columns if col not in stock_data.columns]
         
-        # Ensure all expected columns exist
-        for col in expected_columns:
-            if col not in stock_data.columns:
-                print(f"Column {col} is missing from data")
-                # Add missing columns with reasonable defaults
+        if missing_columns:
+            print(f"Warning: Missing columns: {missing_columns}")
+            # Add missing columns with reasonable defaults
+            for col in missing_columns:
                 if col == 'Volume':
                     stock_data['Volume'] = 0  # Default volume
                 else:
-                    # For OHLC, copy the available price data if any column exists
+                    # For OHLC, use available price columns
                     price_cols = [c for c in ['Open', 'High', 'Low', 'Close'] if c in stock_data.columns]
                     if price_cols:
-                        # Use the first available price column
                         stock_data[col] = stock_data[price_cols[0]]
                     else:
-                        # If no price columns exist, we can't proceed
                         print(f"No price data available for {ticker}")
                         return None
         
-        # Clean up data - make sure all values are numeric and properly formatted
-        for col in expected_columns:
-            if col in stock_data.columns:
-                # Convert to numeric using Series, not arrays (to avoid the "arg must be a list, tuple..." error)
-                stock_data[col] = pd.to_numeric(stock_data[col], errors='coerce')
+        # Convert all columns to numeric values
+        for col in stock_data.columns:
+            stock_data[col] = pd.to_numeric(stock_data[col], errors='coerce')
         
-        # Fill any NaN values to avoid plotting issues - use Series methods, not array methods
+        # Fill any NaN values
         stock_data = stock_data.fillna(method='ffill').fillna(method='bfill')
         
-        # Ensure we have data
         if len(stock_data) == 0:
             print(f"No valid data rows for {ticker}")
             return None
@@ -142,15 +141,97 @@ def get_stock_data(ticker, period="1mo", interval="1d"):
         print(f"Error fetching stock data for {ticker}: {str(e)}")
         return None
 
+def calculate_technical_indicators(stock_data):
+    """
+    Calculate technical indicators for the stock data
+    
+    Args:
+        stock_data (pandas.DataFrame): Stock price data with OHLCV columns
+    
+    Returns:
+        pandas.DataFrame: Stock data with technical indicators added
+    """
+    if stock_data is None or len(stock_data) < 14:
+        # Need at least 14 days of data for basic indicators
+        return stock_data
+    
+    try:
+        # Create a working copy
+        df = stock_data.copy()
+        
+        # 1. Moving Averages
+        # Simple Moving Averages
+        df['SMA20'] = df['Close'].rolling(window=20).mean()
+        df['SMA50'] = df['Close'].rolling(window=50).mean()
+        df['SMA200'] = df['Close'].rolling(window=200).mean()
+        
+        # Exponential Moving Averages
+        df['EMA20'] = df['Close'].ewm(span=20, adjust=False).mean()
+        df['EMA50'] = df['Close'].ewm(span=50, adjust=False).mean()
+        
+        # 2. Relative Strength Index (RSI)
+        delta = df['Close'].diff()
+        gain = delta.where(delta > 0, 0)
+        loss = -delta.where(delta < 0, 0)
+        avg_gain = gain.rolling(window=14).mean()
+        avg_loss = loss.rolling(window=14).mean()
+        rs = avg_gain / avg_loss
+        df['RSI'] = 100 - (100 / (1 + rs))
+        
+        # 3. Bollinger Bands
+        df['MA20'] = df['Close'].rolling(window=20).mean()
+        df['StdDev'] = df['Close'].rolling(window=20).std()
+        df['UpperBand'] = df['MA20'] + (df['StdDev'] * 2)
+        df['LowerBand'] = df['MA20'] - (df['StdDev'] * 2)
+        
+        # 4. MACD
+        df['EMA12'] = df['Close'].ewm(span=12, adjust=False).mean()
+        df['EMA26'] = df['Close'].ewm(span=26, adjust=False).mean()
+        df['MACD'] = df['EMA12'] - df['EMA26']
+        df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+        df['Histogram'] = df['MACD'] - df['Signal']
+        
+        # 5. Stochastic Oscillator
+        low_min = df['Low'].rolling(window=14).min()
+        high_max = df['High'].rolling(window=14).max()
+        df['Stoch_K'] = 100 * ((df['Close'] - low_min) / (high_max - low_min))
+        df['Stoch_D'] = df['Stoch_K'].rolling(window=3).mean()
+        
+        # 6. Average True Range (ATR)
+        high_low = df['High'] - df['Low']
+        high_close = (df['High'] - df['Close'].shift()).abs()
+        low_close = (df['Low'] - df['Close'].shift()).abs()
+        true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+        df['ATR'] = true_range.rolling(window=14).mean()
+        
+        # 7. On-Balance Volume (OBV)
+        obv = [0]
+        for i in range(1, len(df)):
+            if df['Close'].iloc[i] > df['Close'].iloc[i-1]:
+                obv.append(obv[-1] + df['Volume'].iloc[i])
+            elif df['Close'].iloc[i] < df['Close'].iloc[i-1]:
+                obv.append(obv[-1] - df['Volume'].iloc[i])
+            else:
+                obv.append(obv[-1])
+        df['OBV'] = obv
+        
+        # Clean up NANs
+        df = df.fillna(method='bfill').fillna(method='ffill')
+        
+        return df
+    except Exception as e:
+        print(f"Error calculating technical indicators: {str(e)}")
+        return stock_data
+
 def get_stock_info(ticker):
     """
-    Get stock information including current price and key statistics
+    Get comprehensive stock information including fundamental and technical data
     
     Args:
         ticker (str): Stock ticker symbol
     
     Returns:
-        dict: Stock information
+        dict: Detailed stock information
     """
     try:
         # Clean up and normalize the ticker first
@@ -160,9 +241,7 @@ def get_stock_info(ticker):
                 'longName': "Unknown",
                 'currentPrice': 0,
                 'dayChange': 0,
-                'marketCap': 0,
-                'fiftyTwoWeekHigh': 0,
-                'fiftyTwoWeekLow': 0
+                'marketCap': 0
             }
             
         # Handle different notations and normalize ticker symbols
@@ -179,28 +258,59 @@ def get_stock_info(ticker):
             if "Nifty50" in ticker:
                 ticker = ticker.split(" (")[0] + ".NS"
             elif "Sensex" in ticker:
-                ticker = ticker.split(" (")[0] + ".NS"
+                ticker = ticker.split(" (")[0] + ".BO"  # Fix: Use BSE extension for Sensex stocks
             elif "^" in ticker or "NIFTY" in ticker.upper():
                 # Extract index symbol from format like "Nifty 50 (^NSEI)"
                 ticker = ticker.split(" (")[1].rstrip(")")
                 
-        print(f"Getting stock info for: {ticker}")
+        print(f"Getting comprehensive stock info for: {ticker}")
         
-        # First try to get the latest stock data
-        stock_data = get_stock_data(ticker, period="5d")
-        if stock_data is None or stock_data.empty or len(stock_data) == 0:
-            print(f"No recent data found for {ticker}")
-            # Return default info for the ticker
+        # Use Ticker API for everything
+        stock = yf.Ticker(ticker)
+        
+        # Step 1: Get historical data
+        stock_data = stock.history(period="1y", interval="1d", auto_adjust=True)
+        
+        if stock_data.empty or len(stock_data) == 0:
+            # Try alternative extensions if data is empty
+            if ticker.endswith(".NS"):
+                alternative = ticker.replace(".NS", ".BO")
+                stock = yf.Ticker(alternative)
+                stock_data = stock.history(period="1y", interval="1d", auto_adjust=True)
+                if not stock_data.empty and len(stock_data) > 0:
+                    ticker = alternative
+            elif ticker.endswith(".BO"):
+                alternative = ticker.replace(".BO", ".NS")
+                stock = yf.Ticker(alternative)
+                stock_data = stock.history(period="1y", interval="1d", auto_adjust=True)
+                if not stock_data.empty and len(stock_data) > 0:
+                    ticker = alternative
+            elif not ticker.startswith('^') and not ticker.endswith((".NS", ".BO")):
+                # Try with NSE extension first
+                alternative = f"{ticker}.NS"
+                stock = yf.Ticker(alternative)
+                stock_data = stock.history(period="1y", interval="1d", auto_adjust=True)
+                if not stock_data.empty and len(stock_data) > 0:
+                    ticker = alternative
+                else:
+                    # If NSE fails, try BSE
+                    alternative = f"{ticker}.BO"
+                    stock = yf.Ticker(alternative)
+                    stock_data = stock.history(period="1y", interval="1d", auto_adjust=True)
+                    if not stock_data.empty and len(stock_data) > 0:
+                        ticker = alternative
+        
+        # Exit if still no data
+        if stock_data.empty or len(stock_data) == 0:
+            print(f"No historical data found for {ticker}")
             return {
                 'longName': ticker,
                 'currentPrice': 0,
                 'dayChange': 0,
-                'marketCap': 0,
-                'fiftyTwoWeekHigh': 0,
-                'fiftyTwoWeekLow': 0
+                'error': "No data available"
             }
             
-        # Get basic info from the stock data
+        # Get the latest price data
         latest_data = stock_data.iloc[-1]
         prev_data = stock_data.iloc[-2] if len(stock_data) > 1 else latest_data
         
@@ -208,56 +318,90 @@ def get_stock_info(ticker):
         previous_close = prev_data['Close']
         day_change_percent = ((current_price / previous_close) - 1) * 100 if previous_close > 0 else 0
         
-        # Try to get more detailed info from ticker
+        # Step 2: Get all available info from Yahoo Finance
         try:
-            stock = yf.Ticker(ticker)
             info = stock.info
+        except Exception as info_error:
+            print(f"Error getting detailed info: {str(info_error)}")
+            info = {}
+        
+        # Step 3: Prepare technical indicators
+        tech_data = calculate_technical_indicators(stock_data)
+        latest_tech = tech_data.iloc[-1] if not tech_data.empty and len(tech_data) > 0 else None
+        
+        # Step 4: Create the complete stock information dictionary
+        stock_info = {
+            # Basic info
+            'symbol': ticker,
+            'longName': info.get('shortName', info.get('longName', ticker)),
+            'exchange': info.get('exchange', 'N/A'),
+            'currency': info.get('currency', 'INR'),
+            'currentPrice': current_price,
+            'dayChange': day_change_percent,
+            'dayHigh': latest_data.get('High', 0),
+            'dayLow': latest_data.get('Low', 0),
+            'volume': latest_data.get('Volume', 0),
             
-            # Create a dictionary with relevant information
-            stock_info = {
-                'longName': info.get('shortName', info.get('longName', ticker)),
-                'sector': info.get('sector', 'N/A'),
-                'industry': info.get('industry', 'N/A'),
-                'currentPrice': current_price,
-                'dayChange': day_change_percent,
-                'marketCap': info.get('marketCap', 0),
-                'fiftyTwoWeekHigh': info.get('fiftyTwoWeekHigh', stock_data['High'].max()),
-                'fiftyTwoWeekLow': info.get('fiftyTwoWeekLow', stock_data['Low'].min()),
-                'trailingPE': info.get('trailingPE', None),
-                'forwardPE': info.get('forwardPE', None),
-                'pegRatio': info.get('pegRatio', None),
-                'priceToBook': info.get('priceToBook', None),
-                'dividendYield': info.get('dividendYield', None),
-                'beta': info.get('beta', None),
-                'averageVolume': info.get('averageVolume', stock_data['Volume'].mean()),
-                'averageVolume10days': info.get('averageVolume10days', stock_data['Volume'].mean())
-            }
+            # Fundamental data
+            'marketCap': info.get('marketCap', 0),
+            'sector': info.get('sector', 'N/A'),
+            'industry': info.get('industry', 'N/A'),
+            'trailingPE': info.get('trailingPE', None),
+            'forwardPE': info.get('forwardPE', None),
+            'priceToBook': info.get('priceToBook', None),
+            'bookValue': info.get('bookValue', None),
+            'dividendYield': info.get('dividendYield', None) * 100 if info.get('dividendYield') else None,
+            'profitMargins': info.get('profitMargins', None) * 100 if info.get('profitMargins') else None,
+            'operatingMargins': info.get('operatingMargins', None) * 100 if info.get('operatingMargins') else None,
+            'returnOnAssets': info.get('returnOnAssets', None) * 100 if info.get('returnOnAssets') else None,
+            'returnOnEquity': info.get('returnOnEquity', None) * 100 if info.get('returnOnEquity') else None,
+            'revenueGrowth': info.get('revenueGrowth', None) * 100 if info.get('revenueGrowth') else None,
+            'earningsGrowth': info.get('earningsGrowth', None) * 100 if info.get('earningsGrowth') else None,
+            'totalCash': info.get('totalCash', None),
+            'totalDebt': info.get('totalDebt', None),
+            'debtToEquity': info.get('debtToEquity', None),
+            'currentRatio': info.get('currentRatio', None),
             
-            print(f"Successfully retrieved stock info for {ticker}")
-            return stock_info
-        except Exception as ticker_error:
-            print(f"Error getting detailed stock info: {str(ticker_error)}")
-            # If detailed info fails, return basic info from the data we have
-            return {
-                'longName': ticker,
-                'currentPrice': current_price,
-                'dayChange': day_change_percent,
-                'marketCap': 0,
-                'fiftyTwoWeekHigh': stock_data['High'].max(),
-                'fiftyTwoWeekLow': stock_data['Low'].min(),
-                'trailingPE': None,
-                'forwardPE': None
+            # Market data
+            'beta': info.get('beta', None),
+            'fiftyTwoWeekHigh': info.get('fiftyTwoWeekHigh', stock_data['High'].max()),
+            'fiftyTwoWeekLow': info.get('fiftyTwoWeekLow', stock_data['Low'].min()),
+            'averageVolume': info.get('averageVolume', stock_data['Volume'].mean()),
+            'averageVolume10days': info.get('averageVolume10days', None),
+            
+            # Technical indicators (if available)
+            'technicalIndicators': {}
+        }
+        
+        # Add technical indicators if available
+        if latest_tech is not None:
+            stock_info['technicalIndicators'] = {
+                'sma20': round(latest_tech.get('SMA20', 0), 2),
+                'sma50': round(latest_tech.get('SMA50', 0), 2),
+                'sma200': round(latest_tech.get('SMA200', 0), 2),
+                'ema20': round(latest_tech.get('EMA20', 0), 2),
+                'rsi': round(latest_tech.get('RSI', 0), 2),
+                'macd': round(latest_tech.get('MACD', 0), 2),
+                'macdSignal': round(latest_tech.get('Signal', 0), 2),
+                'upperBand': round(latest_tech.get('UpperBand', 0), 2),
+                'lowerBand': round(latest_tech.get('LowerBand', 0), 2),
+                'stochK': round(latest_tech.get('Stoch_K', 0), 2),
+                'stochD': round(latest_tech.get('Stoch_D', 0), 2),
+                'atr': round(latest_tech.get('ATR', 0), 2),
+                'obv': latest_tech.get('OBV', 0)
             }
+        
+        print(f"Successfully retrieved comprehensive info for {ticker}")
+        return stock_info
+        
     except Exception as e:
-        print(f"Error getting any stock info for {ticker}: {str(e)}")
+        print(f"Error getting stock info for {ticker}: {str(e)}")
         # Return minimal info
         return {
             'longName': ticker,
             'currentPrice': 0,
             'dayChange': 0,
-            'marketCap': 0,
-            'fiftyTwoWeekHigh': 0,
-            'fiftyTwoWeekLow': 0
+            'error': str(e)
         }
 
 def get_nifty50_list():
@@ -314,14 +458,15 @@ def get_market_overview():
         dict: Market overview data
     """
     try:
-        # Get Nifty 50 data with auto_adjust=True
-        nifty50 = yf.download("^NSEI", period="2d", interval="1d", progress=False, auto_adjust=True)
+        # Get data using Ticker API for consistency
+        nifty50_ticker = yf.Ticker("^NSEI")
+        sensex_ticker = yf.Ticker("^BSESN")
+        nifty_bank_ticker = yf.Ticker("^NSEBANK")
         
-        # Get Sensex data
-        sensex = yf.download("^BSESN", period="2d", interval="1d", progress=False, auto_adjust=True)
-        
-        # Get Nifty Bank data
-        nifty_bank = yf.download("^NSEBANK", period="2d", interval="1d", progress=False, auto_adjust=True)
+        # Get historical data for the last 2 days
+        nifty50 = nifty50_ticker.history(period="2d", interval="1d")
+        sensex = sensex_ticker.history(period="2d", interval="1d")
+        nifty_bank = nifty_bank_ticker.history(period="2d", interval="1d")
         
         # Initialize market data with defaults
         market_data = {
@@ -372,8 +517,81 @@ def get_market_overview():
         return market_data
     except Exception as e:
         print(f"Error getting market overview: {str(e)}")
+        # Return defaults
         return {
             "nifty50": {"current": 0, "change": 0},
             "sensex": {"current": 0, "change": 0},
             "nifty_bank": {"current": 0, "change": 0}
         }
+
+def get_stock_recommendations(ticker):
+    """
+    Get analyst recommendations for a stock
+    
+    Args:
+        ticker (str): Stock ticker symbol
+    
+    Returns:
+        pandas.DataFrame: Analyst recommendations
+    """
+    try:
+        # Clean up the ticker symbol first
+        if ticker is None:
+            return None
+            
+        # Handle special cases in the same way as other functions
+        if "(" in ticker and ")" in ticker:
+            if "Nifty50" in ticker:
+                ticker = ticker.split(" (")[0] + ".NS"
+            elif "Sensex" in ticker:
+                ticker = ticker.split(" (")[0] + ".BO"
+            elif "^" in ticker:
+                ticker = ticker.split(" (")[1].rstrip(")")
+        
+        # Get stock recommendations
+        stock = yf.Ticker(ticker)
+        recommendations = stock.recommendations
+        
+        if recommendations is not None and not recommendations.empty:
+            # Sort by date (most recent first)
+            recommendations = recommendations.sort_index(ascending=False)
+            return recommendations
+        else:
+            return None
+    except Exception as e:
+        print(f"Error getting recommendations for {ticker}: {str(e)}")
+        return None
+
+def calculate_moving_averages(stock_data):
+    """
+    Calculate moving averages for the stock data
+    
+    Args:
+        stock_data (pandas.DataFrame): Stock price data
+    
+    Returns:
+        pandas.DataFrame: Moving averages data
+    """
+    if stock_data is None or stock_data.empty:
+        return None
+    
+    try:
+        # Create a copy to avoid modifying the original
+        ma_data = stock_data.copy()
+        
+        # Calculate moving averages of different periods
+        ma_data['MA5'] = ma_data['Close'].rolling(window=5).mean()
+        ma_data['MA10'] = ma_data['Close'].rolling(window=10).mean()
+        ma_data['MA20'] = ma_data['Close'].rolling(window=20).mean()
+        ma_data['MA50'] = ma_data['Close'].rolling(window=50).mean()
+        ma_data['MA100'] = ma_data['Close'].rolling(window=100).mean()
+        ma_data['MA200'] = ma_data['Close'].rolling(window=200).mean()
+        
+        # Calculate exponential moving averages
+        ma_data['EMA12'] = ma_data['Close'].ewm(span=12, adjust=False).mean()
+        ma_data['EMA26'] = ma_data['Close'].ewm(span=26, adjust=False).mean()
+        
+        return ma_data
+    except Exception as e:
+        print(f"Error calculating moving averages: {str(e)}")
+        return stock_data
