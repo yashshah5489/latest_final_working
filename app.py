@@ -82,14 +82,38 @@ def display_chat_interface():
                     # Get relevant financial news and sources
                     news, news_sources = get_financial_news(user_query)
                     
-                    # Store news sources in session state for display
+                    # Store news sources in session state for display and immediately update the sidebar
                     st.session_state.news_sources = news_sources
+                    
+                    # Force an immediate sidebar refresh to show the updated news sources
+                    with st.sidebar:
+                        if news_sources:
+                            st.empty()  # Clear any previous content
+                            st.markdown("### 📰 Latest News Sources")
+                            for i, source in enumerate(news_sources[:3]):  # Display top 3 sources
+                                # Make sure we have all the required keys
+                                title = source.get('title', 'Article')
+                                url = source.get('url', '#')
+                                date = source.get('date', '')
+                                st.markdown(f"{i+1}. [{title}]({url}) {date}")
                     
                     # Get financial wisdom
                     wisdom = get_financial_wisdom(user_query)
                     
                     # Store the current financial wisdom for display in the sidebar
                     st.session_state.current_financial_wisdom = wisdom
+                    
+                    # Force an immediate sidebar refresh to show the updated wisdom
+                    with st.sidebar:
+                        if wisdom:
+                            st.markdown("---")
+                            with st.expander("💡 Financial Insights", expanded=True):
+                                # Format and display the financial wisdom
+                                wisdom_text = wisdom
+                                # Limit the length to avoid overwhelming the sidebar
+                                if len(wisdom_text) > 500:
+                                    wisdom_text = wisdom_text[:500] + "..."
+                                st.markdown(wisdom_text)
                     
                     # Check if query is stock-specific or index-specific
                     stock_data = None
@@ -223,15 +247,53 @@ def display_stock_analysis():
         selected_option = st.selectbox("Select a stock or index:", stock_options)
         
         if selected_option != "Search for a stock...":
-            # Check if it's an index or a stock
-            if "^" in selected_option or "NIFTY" in selected_option.upper():
-                # Extract the index symbol from the parentheses
-                selected_stock = selected_option.split(" (")[1].rstrip(")")
+            try:
+                print(f"User selected: {selected_option}")
+                # Check if it's an index or a stock
+                if "^" in selected_option or "NIFTY" in selected_option.upper():
+                    # Extract the index symbol from the parentheses
+                    if "(" in selected_option and ")" in selected_option:
+                        selected_stock = selected_option.split(" (")[1].rstrip(")")
+                        print(f"Index symbol extracted: {selected_stock}")
+                    else:
+                        # Handle case where the format is unexpected
+                        if selected_option.startswith("Nifty 50"):
+                            selected_stock = "^NSEI"
+                        elif selected_option.startswith("Sensex"):
+                            selected_stock = "^BSESN"
+                        elif selected_option.startswith("Nifty Bank"):
+                            selected_stock = "^NSEBANK"
+                        elif "IT" in selected_option:
+                            selected_stock = "NIFTYIT.NS"
+                        elif "AUTO" in selected_option:
+                            selected_stock = "NIFTYAUTO.NS"
+                        elif "PHARMA" in selected_option:
+                            selected_stock = "NIFTYPHARMA.NS"
+                        else:
+                            # Default to Nifty 50
+                            selected_stock = "^NSEI"
+                            
+                        print(f"Index symbol assigned: {selected_stock}")
+                else:
+                    # It's a regular stock - check if it's from Nifty50 or Sensex
+                    if "Nifty50" in selected_option or "Sensex" in selected_option:
+                        if "(" in selected_option and ")" in selected_option:
+                            stock_name = selected_option.split(" (")[0]
+                            selected_stock = f"{stock_name}.NS"
+                            print(f"Stock symbol generated: {selected_stock}")
+                        else:
+                            # Unexpected format, just add .NS
+                            selected_stock = selected_option + ".NS"
+                    else:
+                        # Just add .NS extension
+                        selected_stock = selected_option + ".NS"
+                        print(f"Stock symbol generated: {selected_stock}")
+                        
                 st.session_state.selected_stock = selected_stock
-            else:
-                # It's a regular stock
-                selected_stock = selected_option.split(" (")[0] + ".NS"
-                st.session_state.selected_stock = selected_stock
+            except Exception as e:
+                print(f"Error processing selected option: {str(e)}")
+                # Provide a default value
+                st.session_state.selected_stock = "^NSEI"
         
         # Custom stock input
         custom_stock = st.text_input("Or enter a specific stock symbol (add .NS for NSE or .BO for BSE):", 
@@ -714,27 +776,35 @@ def display_stock_analysis():
 # Main app layout
 st.title("🇮🇳 India-Focused Financial Assistant")
 
-# Sidebar for news sources and financial wisdom
+# Create placeholders in the sidebar for dynamic content
 with st.sidebar:
-    if "news_sources" in st.session_state and st.session_state.news_sources:
-        st.markdown("### 📰 Latest News Sources")
-        for i, source in enumerate(st.session_state.news_sources[:3]):  # Display top 3 sources
-            # Make sure we have all the required keys
-            title = source.get('title', 'Article')
-            url = source.get('url', '#')
-            date = source.get('date', '')
-            st.markdown(f"{i+1}. [{title}]({url}) {date}")
+    # Create a placeholder for the news sources section
+    news_section = st.container()
     
-    # Display financial wisdom if available
-    if "current_financial_wisdom" in st.session_state and st.session_state.current_financial_wisdom:
-        st.markdown("---")
-        with st.expander("💡 Financial Insights", expanded=True):
-            # Format and display the financial wisdom
-            wisdom_text = st.session_state.current_financial_wisdom
-            # Limit the length to avoid overwhelming the sidebar
-            if len(wisdom_text) > 500:
-                wisdom_text = wisdom_text[:500] + "..."
-            st.markdown(wisdom_text)
+    # Create a placeholder for the financial wisdom section
+    wisdom_section = st.container()
+    
+    with news_section:
+        if "news_sources" in st.session_state and st.session_state.news_sources:
+            st.markdown("### 📰 Latest News Sources")
+            for i, source in enumerate(st.session_state.news_sources[:3]):  # Display top 3 sources
+                # Make sure we have all the required keys
+                title = source.get('title', 'Article')
+                url = source.get('url', '#')
+                date = source.get('date', '')
+                st.markdown(f"{i+1}. [{title}]({url}) {date}")
+    
+    with wisdom_section:
+        # Display financial wisdom if available
+        if "current_financial_wisdom" in st.session_state and st.session_state.current_financial_wisdom:
+            st.markdown("---")
+            with st.expander("💡 Financial Insights", expanded=True):
+                # Format and display the financial wisdom
+                wisdom_text = st.session_state.current_financial_wisdom
+                # Limit the length to avoid overwhelming the sidebar
+                if len(wisdom_text) > 500:
+                    wisdom_text = wisdom_text[:500] + "..."
+                st.markdown(wisdom_text)
     
     st.markdown("---")
 

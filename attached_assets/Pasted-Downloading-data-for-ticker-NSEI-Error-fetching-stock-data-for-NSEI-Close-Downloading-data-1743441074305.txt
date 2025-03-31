@@ -1,0 +1,54 @@
+Downloading data for ticker: ^NSEI
+Error fetching stock data for ^NSEI: ['Close']
+Downloading data for ticker: ^NSEI
+Error fetching stock data for ^NSEI: ['Close']
+Downloading data for ticker: ZOMATO.NS
+Error fetching stock data for ZOMATO.NS: ['Close']
+Downloading data for ticker: ZOMATO.NS
+Error fetching stock data for ZOMATO.NS: ['Close']
+Downloading data for ticker: ZOMATO.NS
+Error fetching stock data for ZOMATO.NS: ['Close']
+Downloading data for ticker: ^BSESN
+Error fetching stock data for ^BSESN: ['Close']
+USER QUERY: How to trade in BSE stock after latest stock split announcement
+Downloading data for ticker: How to trade in BSE stock after latest stock split announcement.NS
+404 Client Error: Not Found for url: https://query2.finance.yahoo.com/v10/finance/quoteSummary/AFTER?modules=financialData%2CquoteType%2CdefaultKeyStatistics%2CassetProfile%2CsummaryDetail&corsDomain=finance.yahoo.com&formatted=false&symbol=AFTER&crumb=hh43awhSDgF
+404 Client Error: Not Found for url: https://query2.finance.yahoo.com/v10/finance/quoteSummary/TRADE?modules=financialData%2CquoteType%2CdefaultKeyStatistics%2CassetProfile%2CsummaryDetail&corsDomain=finance.yahoo.com&formatted=false&symbol=TRADE&crumb=hh43awhSDgF
+
+10 Failed downloads:
+['HOW', 'TO', 'IN']: YFPricesMissingError('possibly delisted; no price data found  (period=1mo)')
+['BSE', 'STOCK', 'ANNOUNCEMENT.NS', 'SPLIT', 'LATEST']: YFPricesMissingError('possibly delisted; no price data found  (period=1mo) (Yahoo error = "No data found, symbol may be delisted")')
+['AFTER', 'TRADE']: AttributeError("'NoneType' object has no attribute 'update'")
+No data found for ticker How to trade in BSE stock after latest stock split announcement.NS
+Trying alternative symbol: How to trade in BSE stock after latest stock split announcement.BO
+
+10 Failed downloads:
+['IN', 'TO', 'HOW']: YFPricesMissingError('possibly delisted; no price data found  (period=1mo)')
+['SPLIT', 'TRADE', 'BSE', 'AFTER', 'LATEST', 'STOCK', 'ANNOUNCEMENT.BO']: YFPricesMissingError('possibly delisted; no price data found  (period=1mo) (Yahoo error = "No data found, symbol may be delisted")')
+ASSISTANT RESPONSE GENERATED
+Downloading data for ticker: ^BSESN
+Error fetching stock data for ^BSESN: ['Close']
+USER QUERY: How to trade in market after effects of tarriffs by USA take place?
+ASSISTANT RESPONSE GENERATED
+Downloading data for ticker: ^BSESN
+Error fetching stock data for ^BSESN: ['Close']
+Downloading data for ticker: ^BSESN
+Error fetching stock data for ^BSESN: ['Close']
+Downloading data for ticker: ^BSESN
+Error fetching stock data for ^BSESN: ['Close']
+USER QUERY: Impact of tariffs on Indian markets
+ASSISTANT RESPONSE GENERATED
+Downloading data for ticker: ^BSESN
+Error fetching stock data for ^BSESN: ['Close']
+USER QUERY: Elaborate more and tell how to safeguard by portfolio?
+ASSISTANT RESPONSE GENERATED
+Downloading data for ticker: ^BSESN
+Error fetching stock data for ^BSESN: ['Close']
+USER QUERY: Elaborate in greatre detail
+ASSISTANT RESPONSE GENERATED
+Downloading data for ticker: ^BSESN
+Error fetching stock data for ^BSESN: ['Close']
+Downloading data for ticker: ^BSESN
+Error fetching stock data for ^BSESN: ['Close']
+Downloading data for ticker: ^BSESN
+Error fetching stock data for ^BSESN: ['Close']

@@ -18,18 +18,34 @@ def get_stock_data(ticker, period="1mo", interval="1d"):
         pandas.DataFrame: Stock price data
     """
     try:
+        # Clean up the input ticker symbol first
+        if ticker is None:
+            print("No ticker provided")
+            return None
+            
         # Handle different notations and normalize ticker symbols
-        if ticker == "Nifty50" or ticker == "NIFTY50" or ticker == "NIFTY 50" or ticker.lower() == "nifty50":
+        if ticker == "Nifty50" or ticker == "NIFTY50" or ticker == "NIFTY 50" or (isinstance(ticker, str) and ticker.lower() == "nifty50"):
             ticker = "^NSEI"  # Use the official Yahoo Finance symbol
-        elif ticker == "SENSEX" or ticker == "BSE SENSEX" or ticker.lower() == "sensex":
+        elif ticker == "Sensex" or ticker == "SENSEX" or ticker == "BSE SENSEX" or (isinstance(ticker, str) and ticker.lower() == "sensex"):
             ticker = "^BSESN"  # Use the official Yahoo Finance symbol
-        elif ticker == "NIFTYBANK" or ticker == "NIFTY BANK" or ticker.lower() == "niftybank":
+        elif ticker == "NiftyBank" or ticker == "NIFTYBANK" or ticker == "NIFTY BANK" or (isinstance(ticker, str) and ticker.lower() == "niftybank"):
             ticker = "^NSEBANK"  # Use the official Yahoo Finance symbol
+        
+        # Fix special cases for stock dropdowns
+        if "(" in ticker and ")" in ticker:
+            # Extract the actual symbol from format like "RELIANCE (Nifty50)"
+            if "Nifty50" in ticker:
+                ticker = ticker.split(" (")[0] + ".NS"
+            elif "Sensex" in ticker:
+                ticker = ticker.split(" (")[0] + ".NS"
+            elif "^" in ticker or "NIFTY" in ticker.upper():
+                # Extract index symbol from format like "Nifty 50 (^NSEI)"
+                ticker = ticker.split(" (")[1].rstrip(")")
             
         print(f"Downloading data for ticker: {ticker}")
         
-        # Fetch data with auto adjust turned off to avoid conversion issues
-        stock_data = yf.download(ticker, period=period, interval=interval, progress=False, auto_adjust=False)
+        # Fetch data with auto adjust ON to fix issues with the Adj Close column
+        stock_data = yf.download(ticker, period=period, interval=interval, progress=False, auto_adjust=True)
         
         if stock_data.empty:
             print(f"No data found for ticker {ticker}")
@@ -37,46 +53,55 @@ def get_stock_data(ticker, period="1mo", interval="1d"):
             if ticker.endswith(".NS"):
                 alternative = ticker.replace(".NS", ".BO")
                 print(f"Trying alternative symbol: {alternative}")
-                stock_data = yf.download(alternative, period=period, interval=interval, progress=False, auto_adjust=False)
+                stock_data = yf.download(alternative, period=period, interval=interval, progress=False, auto_adjust=True)
             elif not ticker.startswith('^') and not ticker.endswith((".NS", ".BO")):
                 # Try with .NS extension
                 alternative = f"{ticker}.NS"
                 print(f"Trying with NSE extension: {alternative}")
-                stock_data = yf.download(alternative, period=period, interval=interval, progress=False, auto_adjust=False)
+                stock_data = yf.download(alternative, period=period, interval=interval, progress=False, auto_adjust=True)
         
         if stock_data.empty:
+            print(f"Still no data found for {ticker} after trying alternatives")
             return None
-            
-        # Check if required columns exist before processing
-        required_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
-        missing_columns = [col for col in required_columns if col not in stock_data.columns]
         
-        if missing_columns:
-            print(f"Missing required columns: {missing_columns}")
-            # Try to add missing columns with default values if possible
-            for col in missing_columns:
-                if col == 'Volume' and 'Adj Close' in stock_data.columns:
-                    # Use a default volume based on Adj Close
-                    stock_data['Volume'] = 0
-                # For other required columns, we need data
-                elif col in ['Open', 'High', 'Low', 'Close']:
-                    # If we're missing critical price data, we need to fail
-                    print(f"Critical column missing: {col}")
-                    return None
+        # When auto_adjust is True, we have Open, High, Low, Close, and Volume
+        # "Adj Close" is not present, but all prices are already adjusted
+        expected_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
         
-        # Convert data to numeric types to avoid Series.format errors
-        for col in stock_data.columns:
-            if col in ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']:
-                # Use numpy arrays to avoid Series.format errors
-                stock_data[col] = pd.to_numeric(stock_data[col], errors='coerce').fillna(0).values
+        # Ensure all expected columns exist
+        for col in expected_columns:
+            if col not in stock_data.columns:
+                print(f"Column {col} is missing from data")
+                # Add missing columns with reasonable defaults
+                if col == 'Volume':
+                    stock_data['Volume'] = 0  # Default volume
+                else:
+                    # For OHLC, copy the available price data if any column exists
+                    price_cols = [c for c in ['Open', 'High', 'Low', 'Close'] if c in stock_data.columns]
+                    if price_cols:
+                        # Use the first available price column
+                        stock_data[col] = stock_data[price_cols[0]]
+                    else:
+                        # If no price columns exist, we can't proceed
+                        print(f"No price data available for {ticker}")
+                        return None
         
-        # Drop rows with NaN values in Close column
-        if 'Close' in stock_data.columns:
-            stock_data = stock_data.dropna(subset=['Close'])
-            
+        # Clean up data - make sure all values are numeric
+        for col in expected_columns:
+            stock_data[col] = pd.to_numeric(stock_data[col], errors='coerce')
+        
+        # Fill any NaN values to avoid plotting issues
+        stock_data = stock_data.fillna(method='ffill').fillna(method='bfill')
+        
+        # Ensure we have data
+        if len(stock_data) == 0:
+            print(f"No valid data rows for {ticker}")
+            return None
+        
         print(f"Successfully downloaded data for {ticker}, shape: {stock_data.shape}")
         print(f"Columns: {stock_data.columns.tolist()}")
         return stock_data
+        
     except Exception as e:
         print(f"Error fetching stock data for {ticker}: {str(e)}")
         return None
@@ -92,17 +117,42 @@ def get_stock_info(ticker):
         dict: Stock information
     """
     try:
-        # Special handling for indices
-        if ticker == "NIFTY50" or ticker == "NIFTY 50":
+        # Clean up and normalize the ticker first
+        if ticker is None:
+            print("No ticker provided for stock info")
+            return {
+                'longName': "Unknown",
+                'currentPrice': 0,
+                'dayChange': 0,
+                'marketCap': 0,
+                'fiftyTwoWeekHigh': 0,
+                'fiftyTwoWeekLow': 0
+            }
+            
+        # Handle different notations and normalize ticker symbols
+        if ticker == "Nifty50" or ticker == "NIFTY50" or ticker == "NIFTY 50" or (isinstance(ticker, str) and ticker.lower() == "nifty50"):
             ticker = "^NSEI"  # Use the official Yahoo Finance symbol
-        elif ticker == "SENSEX" or ticker == "BSE SENSEX":
+        elif ticker == "Sensex" or ticker == "SENSEX" or ticker == "BSE SENSEX" or (isinstance(ticker, str) and ticker.lower() == "sensex"):
             ticker = "^BSESN"  # Use the official Yahoo Finance symbol
-        elif ticker == "NIFTYBANK" or ticker == "NIFTY BANK":
+        elif ticker == "NiftyBank" or ticker == "NIFTYBANK" or ticker == "NIFTY BANK" or (isinstance(ticker, str) and ticker.lower() == "niftybank"):
             ticker = "^NSEBANK"  # Use the official Yahoo Finance symbol
+        
+        # Fix special cases for stock dropdowns
+        if "(" in ticker and ")" in ticker:
+            # Extract the actual symbol from format like "RELIANCE (Nifty50)"
+            if "Nifty50" in ticker:
+                ticker = ticker.split(" (")[0] + ".NS"
+            elif "Sensex" in ticker:
+                ticker = ticker.split(" (")[0] + ".NS"
+            elif "^" in ticker or "NIFTY" in ticker.upper():
+                # Extract index symbol from format like "Nifty 50 (^NSEI)"
+                ticker = ticker.split(" (")[1].rstrip(")")
+                
+        print(f"Getting stock info for: {ticker}")
         
         # First try to get the latest stock data
         stock_data = get_stock_data(ticker, period="5d")
-        if stock_data is None or stock_data.empty:
+        if stock_data is None or stock_data.empty or len(stock_data) == 0:
             print(f"No recent data found for {ticker}")
             # Return default info for the ticker
             return {
@@ -129,7 +179,7 @@ def get_stock_info(ticker):
             
             # Create a dictionary with relevant information
             stock_info = {
-                'longName': info.get('longName', ticker),
+                'longName': info.get('shortName', info.get('longName', ticker)),
                 'sector': info.get('sector', 'N/A'),
                 'industry': info.get('industry', 'N/A'),
                 'currentPrice': current_price,
@@ -147,6 +197,7 @@ def get_stock_info(ticker):
                 'averageVolume10days': info.get('averageVolume10days', stock_data['Volume'].mean())
             }
             
+            print(f"Successfully retrieved stock info for {ticker}")
             return stock_info
         except Exception as ticker_error:
             print(f"Error getting detailed stock info: {str(ticker_error)}")
@@ -227,44 +278,66 @@ def get_market_overview():
         dict: Market overview data
     """
     try:
-        # Get Nifty 50 data
-        nifty50 = yf.download("^NSEI", period="2d", interval="1d", progress=False)
+        # Get Nifty 50 data with auto_adjust=True
+        nifty50 = yf.download("^NSEI", period="2d", interval="1d", progress=False, auto_adjust=True)
         
         # Get Sensex data
-        sensex = yf.download("^BSESN", period="2d", interval="1d", progress=False)
+        sensex = yf.download("^BSESN", period="2d", interval="1d", progress=False, auto_adjust=True)
         
         # Get Nifty Bank data
-        nifty_bank = yf.download("^NSEBANK", period="2d", interval="1d", progress=False)
+        nifty_bank = yf.download("^NSEBANK", period="2d", interval="1d", progress=False, auto_adjust=True)
         
-        # Calculate daily changes
-        nifty50_current = nifty50['Close'].iloc[-1]
-        nifty50_prev = nifty50['Close'].iloc[-2]
-        nifty50_change = ((nifty50_current / nifty50_prev) - 1) * 100
-        
-        sensex_current = sensex['Close'].iloc[-1]
-        sensex_prev = sensex['Close'].iloc[-2]
-        sensex_change = ((sensex_current / sensex_prev) - 1) * 100
-        
-        nifty_bank_current = nifty_bank['Close'].iloc[-1]
-        nifty_bank_prev = nifty_bank['Close'].iloc[-2]
-        nifty_bank_change = ((nifty_bank_current / nifty_bank_prev) - 1) * 100
-        
+        # Initialize market data with defaults
         market_data = {
             "nifty50": {
-                "current": nifty50_current,
-                "change": nifty50_change
+                "current": 0,
+                "change": 0
             },
             "sensex": {
-                "current": sensex_current,
-                "change": sensex_change
+                "current": 0,
+                "change": 0
             },
             "nifty_bank": {
+                "current": 0,
+                "change": 0
+            }
+        }
+        
+        # Calculate Nifty50 data if available
+        if not nifty50.empty and len(nifty50) >= 2 and 'Close' in nifty50.columns:
+            nifty50_current = nifty50['Close'].iloc[-1]
+            nifty50_prev = nifty50['Close'].iloc[-2]
+            nifty50_change = ((nifty50_current / nifty50_prev) - 1) * 100 if nifty50_prev > 0 else 0
+            market_data["nifty50"] = {
+                "current": nifty50_current,
+                "change": nifty50_change
+            }
+        
+        # Calculate Sensex data if available
+        if not sensex.empty and len(sensex) >= 2 and 'Close' in sensex.columns:
+            sensex_current = sensex['Close'].iloc[-1]
+            sensex_prev = sensex['Close'].iloc[-2]
+            sensex_change = ((sensex_current / sensex_prev) - 1) * 100 if sensex_prev > 0 else 0
+            market_data["sensex"] = {
+                "current": sensex_current,
+                "change": sensex_change
+            }
+        
+        # Calculate Nifty Bank data if available
+        if not nifty_bank.empty and len(nifty_bank) >= 2 and 'Close' in nifty_bank.columns:
+            nifty_bank_current = nifty_bank['Close'].iloc[-1]
+            nifty_bank_prev = nifty_bank['Close'].iloc[-2]
+            nifty_bank_change = ((nifty_bank_current / nifty_bank_prev) - 1) * 100 if nifty_bank_prev > 0 else 0
+            market_data["nifty_bank"] = {
                 "current": nifty_bank_current,
                 "change": nifty_bank_change
             }
-        }
         
         return market_data
     except Exception as e:
         print(f"Error getting market overview: {str(e)}")
-        return {}
+        return {
+            "nifty50": {"current": 0, "change": 0},
+            "sensex": {"current": 0, "change": 0},
+            "nifty_bank": {"current": 0, "change": 0}
+        }
