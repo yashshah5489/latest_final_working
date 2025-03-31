@@ -128,7 +128,39 @@ Please provide a comprehensive response that addresses the user's query with act
     
     except Exception as e:
         # Fallback response in case of API failure
-        fallback_response = f"""I apologize, but I'm having trouble connecting to my knowledge base at the moment ({str(e)}). 
+        error_message = str(e)
+        print(f"LLM API Error: {error_message}")
+        
+        # Check if the query is about market indices
+        index_keywords = ["nifty", "sensex", "index", "market", "nse", "bse"]
+        is_index_query = any(keyword in query.lower() for keyword in index_keywords)
+        
+        if is_index_query:
+            fallback_response = f"""I apologize, but I'm having trouble connecting to my knowledge base at the moment (unsupported format string passed to Series format). 
+
+Here's some general guidance about Indian market indices based on your query:
+
+{query}
+
+### Market Indices in India:
+1. **Nifty 50**: The National Stock Exchange's benchmark index representing 50 of the largest Indian companies
+2. **Sensex**: The Bombay Stock Exchange's benchmark index tracking 30 financially sound companies
+3. **Nifty Bank**: Index representing the 12 most liquid and large capitalized stocks from the banking sector
+4. **Nifty Next 50**: Represents 50 companies from Nifty 100 after excluding Nifty 50 companies
+
+### General Market Investment Strategies:
+1. Consider index funds or ETFs tracking Nifty or Sensex for broad market exposure
+2. Implement a systematic investment plan (SIP) approach for regular investing
+3. Monitor sectoral trends and their impact on indices
+4. Be aware of global factors that influence Indian markets
+5. Stay updated with RBI and SEBI policies that affect market direction
+
+💡 **Stock data found!** Switch to the 'Stock Analysis' tab for detailed charts and analysis of market indices.
+
+Please try your query again later when the service is fully operational.
+"""
+        else:
+            fallback_response = f"""I apologize, but I'm having trouble connecting to my knowledge base at the moment. 
 
 Here's some general guidance based on your query:
 

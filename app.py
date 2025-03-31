@@ -62,23 +62,70 @@ def display_chat_interface():
                     # Get financial wisdom
                     wisdom = get_financial_wisdom(user_query)
                     
-                    # Check if query is stock-specific
+                    # Check if query is stock-specific or index-specific
                     stock_data = None
-                    if any(keyword in user_query.lower() for keyword in ["stock", "share", "nse", "bse", "sensex", "nifty"]):
+                    stock_detected = False
+                    index_detected = False
+                    
+                    # Define common indices and check for them first
+                    indices = {
+                        "nifty": "^NSEI",  # Nifty 50
+                        "sensex": "^BSESN",  # BSE Sensex
+                        "nifty bank": "^NSEBANK",  # Nifty Bank
+                        "nifty 50": "^NSEI",
+                        "nifty50": "^NSEI"
+                    }
+                    
+                    # Check for indices first
+                    query_lower = user_query.lower()
+                    for index_name, index_symbol in indices.items():
+                        if index_name in query_lower:
+                            try:
+                                # Try to get index data
+                                index_data = get_stock_data(index_symbol, "1mo")
+                                if index_data is not None and not index_data.empty:
+                                    stock_data = index_data
+                                    st.session_state.selected_stock = index_symbol
+                                    st.session_state.stock_data = index_data
+                                    index_detected = True
+                                    break
+                            except Exception as e:
+                                print(f"Error fetching index data for {index_name}: {str(e)}")
+                    
+                    # If no index detected, try to find stocks
+                    if not index_detected and any(keyword in query_lower for keyword in ["stock", "share", "nse", "bse", "price", "ltd", "limited"]):
                         # Try to extract stock name/symbol from query
                         import re
                         stock_matches = re.findall(r'\b[A-Za-z]+(?:\s[A-Za-z]+)*\b', user_query)
+                        
+                        # Define common words to ignore
+                        common_words = ['the', 'and', 'for', 'about', 'what', 'how', 'stock', 'share', 
+                                        'price', 'market', 'india', 'indian', 'should', 'could', 'would', 
+                                        'invest', 'investment', 'trade', 'trading', 'buy', 'sell', 'tell', 
+                                        'me', 'please', 'thanks', 'you', 'your', 'my', 'can', 'will']
+                        
                         for potential_stock in stock_matches:
-                            if len(potential_stock) > 2 and potential_stock.lower() not in ['the', 'and', 'for', 'about', 'what', 'how', 'stock', 'share', 'price']:
+                            if len(potential_stock) > 2 and potential_stock.lower() not in common_words:
                                 try:
-                                    # Try to get stock data
+                                    # Try NSE first
                                     stock_data = get_stock_data(potential_stock + ".NS", "1mo")
                                     if stock_data is not None and not stock_data.empty:
                                         st.session_state.selected_stock = potential_stock + ".NS"
                                         st.session_state.stock_data = stock_data
+                                        stock_detected = True
                                         break
-                                except:
-                                    pass
+                                except Exception as e:
+                                    print(f"NSE lookup failed for {potential_stock}: {str(e)}")
+                                    try:
+                                        # Try BSE if NSE fails
+                                        stock_data = get_stock_data(potential_stock + ".BO", "1mo")
+                                        if stock_data is not None and not stock_data.empty:
+                                            st.session_state.selected_stock = potential_stock + ".BO"
+                                            st.session_state.stock_data = stock_data
+                                            stock_detected = True
+                                            break
+                                    except:
+                                        pass
                     
                     # Generate LLM response
                     response = generate_llm_response(user_query, news, wisdom, stock_data)
@@ -91,7 +138,10 @@ def display_chat_interface():
                     
                     # Suggest switching to stock tab if stock data was found
                     if stock_data is not None and not stock_data.empty:
-                        st.info("💡 Stock data found! Switch to the 'Stock Analysis' tab for detailed charts and analysis.")
+                        if index_detected:
+                            st.info("💡 Market index data found! Switch to the 'Stock Analysis' tab for detailed charts and analysis of this index.")
+                        elif stock_detected:
+                            st.info("💡 Stock data found! Switch to the 'Stock Analysis' tab for detailed charts and analysis of this stock.")
                 
                 except Exception as e:
                     st.error(f"Error processing your query: {str(e)}")
@@ -103,8 +153,19 @@ def display_stock_analysis():
     col1, col2, col3 = st.columns([2, 1, 1])
     
     with col1:
-        # Stock selector with default lists
+        # Stock selector with default lists and indices
         stock_options = ["Search for a stock..."]
+        
+        # Add major indices first
+        indices = [
+            "Nifty 50 (^NSEI)",
+            "Sensex (^BSESN)",
+            "Nifty Bank (^NSEBANK)",
+            "Nifty IT (NIFTYIT.NS)",
+            "Nifty Auto (NIFTYAUTO.NS)",
+            "Nifty Pharma (NIFTYPHARMA.NS)"
+        ]
+        stock_options.extend(indices)
         
         # Add Nifty 50 and Sensex stocks
         try:
@@ -116,15 +177,21 @@ def display_stock_analysis():
             
             if sensex_stocks:
                 stock_options.extend([f"{stock} (Sensex)" for stock in sensex_stocks])
-        except:
-            pass
+        except Exception as e:
+            print(f"Error loading stock lists: {str(e)}")
         
-        selected_option = st.selectbox("Select a stock:", stock_options)
+        selected_option = st.selectbox("Select a stock or index:", stock_options)
         
         if selected_option != "Search for a stock...":
-            # Extract stock symbol from the selected option
-            selected_stock = selected_option.split(" (")[0] + ".NS"
-            st.session_state.selected_stock = selected_stock
+            # Check if it's an index or a stock
+            if "^" in selected_option or "NIFTY" in selected_option.upper():
+                # Extract the index symbol from the parentheses
+                selected_stock = selected_option.split(" (")[1].rstrip(")")
+                st.session_state.selected_stock = selected_stock
+            else:
+                # It's a regular stock
+                selected_stock = selected_option.split(" (")[0] + ".NS"
+                st.session_state.selected_stock = selected_stock
         
         # Custom stock input
         custom_stock = st.text_input("Or enter a specific stock symbol (add .NS for NSE or .BO for BSE):", 
@@ -242,8 +309,22 @@ def display_stock_analysis():
                             st.error(f"Error creating chart: {str(e)}")
                 
                 # Set layout
+                display_name = st.session_state.selected_stock
+                # Format the display name differently based on whether it's an index or stock
+                if display_name.startswith('^'):
+                    if display_name == '^NSEI':
+                        display_name = 'Nifty 50'
+                    elif display_name == '^BSESN':
+                        display_name = 'BSE Sensex'
+                    elif display_name == '^NSEBANK':
+                        display_name = 'Nifty Bank'
+                    title_text = f"{display_name} Index"
+                else:
+                    display_name = display_name.split('.')[0]
+                    title_text = f"{display_name} Stock Price"
+                    
                 fig.update_layout(
-                    title=f"{st.session_state.selected_stock.split('.')[0]} Stock Price",
+                    title=title_text,
                     xaxis_title='Date',
                     yaxis_title='Price (₹)',
                     yaxis2=dict(
