@@ -1,7 +1,10 @@
 import os
 import json
-from langchain_groq import ChatGroq
-from langchain.schema import HumanMessage, SystemMessage
+import requests
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 def generate_llm_response(query, news, financial_wisdom, stock_data=None):
     """
@@ -39,15 +42,6 @@ I can still help with stock analysis and provide general information about India
 3. Inquire about Indian market indices like Nifty50 or Sensex
             """
         
-        # Initialize Groq client
-        llm = ChatGroq(
-            api_key=groq_api_key,
-            model="llama3-70b-8192",  # Using Llama 3 70B model
-            temperature=0.3,  # Lower temperature for more factual responses
-            max_tokens=4096,
-            top_p=0.9
-        )
-        
         # Prepare system prompt
         system_prompt = """You are an expert Indian financial advisor and analyst specializing in Indian markets, economy, regulations, investments, and personal finance. 
 
@@ -82,8 +76,8 @@ Always frame your advice within the context of Indian financial regulations, mar
 - Average trading volume: {int(stock_data['Volume'].mean()):,}
 """
 
-        # Prepare the human message with the query, news, and financial wisdom
-        human_prompt = f"""
+        # Prepare the user message with the query, news, and financial wisdom
+        user_prompt = f"""
 # User Query:
 {query}
 
@@ -98,13 +92,39 @@ Always frame your advice within the context of Indian financial regulations, mar
 Please provide a comprehensive response that addresses the user's query with actionable insights, considering the Indian financial context, the provided news, financial wisdom, and stock data (if available). Your response should be well-structured, informative, and tailored specifically to the Indian financial landscape.
 """
 
-        # Generate response
-        response = llm.invoke([
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=human_prompt)
-        ])
+        # Set up the API call to Groq
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {groq_api_key}",
+            "Content-Type": "application/json"
+        }
         
-        return response.content
+        data = {
+            "model": "llama3-70b-8192",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": system_prompt
+                },
+                {
+                    "role": "user",
+                    "content": user_prompt
+                }
+            ],
+            "temperature": 0.3,
+            "max_tokens": 4096,
+            "top_p": 0.9
+        }
+        
+        # Make the API call
+        response = requests.post(url, headers=headers, json=data)
+        
+        # Check if the request was successful
+        if response.status_code == 200:
+            response_data = response.json()
+            return response_data["choices"][0]["message"]["content"]
+        else:
+            raise Exception(f"API request failed with status code {response.status_code}: {response.text}")
     
     except Exception as e:
         # Fallback response in case of API failure

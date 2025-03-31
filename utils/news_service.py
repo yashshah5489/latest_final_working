@@ -1,7 +1,10 @@
 import os
 import requests
 from datetime import datetime, timedelta
-from tavily import TavilyClient
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 def get_financial_news(query):
     """
@@ -35,9 +38,6 @@ def get_financial_news(query):
             
             return get_fallback_news(mentioned_terms, query)
         
-        # Initialize Tavily client
-        client = TavilyClient(api_key=tavily_api_key)
-        
         # Parse user query to extract key topics
         search_query = f"Indian finance {query}"
         
@@ -52,8 +52,16 @@ def get_financial_news(query):
                 search_query = f"{term} {query} latest news India"
                 break
         
-        # Set additional parameters
-        search_params = {
+        # Set up the Tavily API request
+        url = "https://api.tavily.com/search"
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+        
+        # Set search parameters
+        payload = {
+            "api_key": tavily_api_key,
             "query": search_query,
             "search_depth": "advanced",
             "include_domains": [
@@ -72,12 +80,16 @@ def get_financial_news(query):
             "time_window": "1w"  # Last week
         }
         
-        # Execute search
-        search_response = client.search(**search_params)
+        # Make the API request
+        response = requests.post(url, headers=headers, json=payload)
         
-        # Format the results
-        if not search_response.get("results"):
-            return "No relevant financial news found for your query."
+        # Check if the request was successful
+        if response.status_code == 200:
+            search_response = response.json()
+            
+            # Format the results
+            if not search_response.get("results"):
+                return "No relevant financial news found for your query."
         
         formatted_news = "## Relevant Financial News:\n\n"
         
