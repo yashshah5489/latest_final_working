@@ -21,7 +21,23 @@ def generate_llm_response(query, news, financial_wisdom, stock_data=None):
         groq_api_key = os.getenv("GROQ_API_KEY")
         
         if not groq_api_key:
-            return "I couldn't generate a response due to API configuration issues. Please try again later."
+            return """
+## API Key Required
+
+To provide personalized financial advice using advanced AI capabilities, I need a Groq API key.
+
+Please set the `GROQ_API_KEY` in your .env file to enable the full functionality of this assistant. You can obtain a Groq API key by signing up at [groq.com](https://groq.com).
+
+Once you have the key, add it to the .env file and restart the application.
+
+### For Now
+
+I can still help with stock analysis and provide general information about Indian finance based on the data available:
+
+1. Try exploring stock data in the "Stock Analysis" tab
+2. Ask general questions about financial concepts
+3. Inquire about Indian market indices like Nifty50 or Sensex
+            """
         
         # Initialize Groq client
         llm = ChatGroq(

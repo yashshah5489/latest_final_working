@@ -3,10 +3,14 @@ import os
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
 from utils.news_service import get_financial_news
 from utils.stock_service import get_stock_data, get_stock_info, get_nifty50_list, get_sensex_list
 from utils.llm_service import generate_llm_response
 from utils.rag_service import get_financial_wisdom
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Page configuration
 st.set_page_config(
