@@ -46,15 +46,36 @@ def get_stock_data(ticker, period="1mo", interval="1d"):
         
         if stock_data.empty:
             return None
+            
+        # Check if required columns exist before processing
+        required_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
+        missing_columns = [col for col in required_columns if col not in stock_data.columns]
+        
+        if missing_columns:
+            print(f"Missing required columns: {missing_columns}")
+            # Try to add missing columns with default values if possible
+            for col in missing_columns:
+                if col == 'Volume' and 'Adj Close' in stock_data.columns:
+                    # Use a default volume based on Adj Close
+                    stock_data['Volume'] = 0
+                # For other required columns, we need data
+                elif col in ['Open', 'High', 'Low', 'Close']:
+                    # If we're missing critical price data, we need to fail
+                    print(f"Critical column missing: {col}")
+                    return None
         
         # Convert data to numeric types to avoid Series.format errors
         for col in stock_data.columns:
-            stock_data[col] = pd.to_numeric(stock_data[col], errors='coerce')
+            if col in ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']:
+                # Use numpy arrays to avoid Series.format errors
+                stock_data[col] = pd.to_numeric(stock_data[col], errors='coerce').fillna(0).values
         
-        # Drop rows with NaN values
-        stock_data = stock_data.dropna(subset=['Close'])
-        
+        # Drop rows with NaN values in Close column
+        if 'Close' in stock_data.columns:
+            stock_data = stock_data.dropna(subset=['Close'])
+            
         print(f"Successfully downloaded data for {ticker}, shape: {stock_data.shape}")
+        print(f"Columns: {stock_data.columns.tolist()}")
         return stock_data
     except Exception as e:
         print(f"Error fetching stock data for {ticker}: {str(e)}")

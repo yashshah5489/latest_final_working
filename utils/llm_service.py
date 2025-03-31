@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-def generate_llm_response(query, news, financial_wisdom, stock_data=None):
+def generate_llm_response(query, news, financial_wisdom, stock_data=None, chat_history=None):
     """
     Generate a response using the Groq LLM API
     
@@ -15,6 +15,7 @@ def generate_llm_response(query, news, financial_wisdom, stock_data=None):
         news (str): Relevant financial news
         financial_wisdom (str): Extracted financial wisdom
         stock_data (pandas.DataFrame, optional): Stock data if available
+        chat_history (list, optional): List of previous chat messages in format [{"role": "user", "content": msg}, {"role": "assistant", "content": resp}]
     
     Returns:
         str: LLM-generated response
@@ -99,18 +100,26 @@ Please provide a comprehensive response that addresses the user's query with act
             "Content-Type": "application/json"
         }
         
+        # Start with the system message
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        # Add chat history if it exists
+        if chat_history and len(chat_history) > 0:
+            # Only include the most recent 10 messages to stay within context limits
+            recent_history = chat_history[-10:] if len(chat_history) > 10 else chat_history
+            
+            # Convert the chat history to the format expected by the API
+            for message in recent_history:
+                if message["role"] in ["user", "assistant"]:
+                    messages.append({"role": message["role"], "content": message["content"]})
+        
+        # Add the current user query
+        messages.append({"role": "user", "content": user_prompt})
+        
+        # Prepare the API request
         data = {
             "model": "llama3-70b-8192",
-            "messages": [
-                {
-                    "role": "system",
-                    "content": system_prompt
-                },
-                {
-                    "role": "user",
-                    "content": user_prompt
-                }
-            ],
+            "messages": messages,
             "temperature": 0.3,
             "max_tokens": 4096,
             "top_p": 0.9

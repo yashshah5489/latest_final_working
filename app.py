@@ -35,9 +35,26 @@ if "time_period" not in st.session_state:
     
 if "news_sources" not in st.session_state:
     st.session_state.news_sources = []
+    
+if "current_financial_wisdom" not in st.session_state:
+    st.session_state.current_financial_wisdom = ""
+    
+if "rerun_flag" not in st.session_state:
+    st.session_state.rerun_flag = False
 
 def display_chat_interface():
     st.header("🇮🇳 Indian Financial Assistant")
+    
+    # Add a "New Chat" button in the top right
+    col1, col2 = st.columns([6, 1])
+    with col2:
+        if st.button("New Chat"):
+            # Clear chat history and reset state
+            st.session_state.chat_history = []
+            st.session_state.current_financial_wisdom = ""
+            st.session_state.rerun_flag = True
+            # Rerun the app to refresh the interface
+            st.rerun()
     
     # Display chat messages
     for message in st.session_state.chat_history:
@@ -50,6 +67,9 @@ def display_chat_interface():
     if user_query:
         # Add user message to chat history
         st.session_state.chat_history.append({"role": "user", "content": user_query})
+        
+        # Log user query for analytics
+        print(f"USER QUERY: {user_query}")
         
         # Display user message
         with st.chat_message("user"):
@@ -67,6 +87,9 @@ def display_chat_interface():
                     
                     # Get financial wisdom
                     wisdom = get_financial_wisdom(user_query)
+                    
+                    # Store the current financial wisdom for display in the sidebar
+                    st.session_state.current_financial_wisdom = wisdom
                     
                     # Check if query is stock-specific or index-specific
                     stock_data = None
@@ -133,8 +156,17 @@ def display_chat_interface():
                                     except:
                                         pass
                     
-                    # Generate LLM response
-                    response = generate_llm_response(user_query, news, wisdom, stock_data)
+                    # Generate LLM response with chat history context
+                    response = generate_llm_response(
+                        user_query, 
+                        news, 
+                        wisdom, 
+                        stock_data, 
+                        chat_history=st.session_state.chat_history[:-1]  # Exclude the current query
+                    )
+                    
+                    # Log response for analytics
+                    print(f"ASSISTANT RESPONSE GENERATED")
                     
                     # Add response to chat history
                     st.session_state.chat_history.append({"role": "assistant", "content": response})
@@ -150,7 +182,9 @@ def display_chat_interface():
                             st.info("💡 Stock data found! Switch to the 'Stock Analysis' tab for detailed charts and analysis of this stock.")
                 
                 except Exception as e:
-                    st.error(f"Error processing your query: {str(e)}")
+                    error_msg = f"Error processing your query: {str(e)}"
+                    st.error(error_msg)
+                    print(f"ERROR: {error_msg}")
                     st.session_state.chat_history.append({"role": "assistant", "content": f"I apologize, but I encountered an error while processing your query: {str(e)}"})
 
 def display_stock_analysis():
@@ -680,7 +714,7 @@ def display_stock_analysis():
 # Main app layout
 st.title("🇮🇳 India-Focused Financial Assistant")
 
-# Sidebar for news sources
+# Sidebar for news sources and financial wisdom
 with st.sidebar:
     if "news_sources" in st.session_state and st.session_state.news_sources:
         st.markdown("### 📰 Latest News Sources")
@@ -691,10 +725,21 @@ with st.sidebar:
             date = source.get('date', '')
             st.markdown(f"{i+1}. [{title}]({url}) {date}")
     
+    # Display financial wisdom if available
+    if "current_financial_wisdom" in st.session_state and st.session_state.current_financial_wisdom:
+        st.markdown("---")
+        with st.expander("💡 Financial Insights", expanded=True):
+            # Format and display the financial wisdom
+            wisdom_text = st.session_state.current_financial_wisdom
+            # Limit the length to avoid overwhelming the sidebar
+            if len(wisdom_text) > 500:
+                wisdom_text = wisdom_text[:500] + "..."
+            st.markdown(wisdom_text)
+    
     st.markdown("---")
 
 # Create tabs
-tab1, tab2 = st.tabs(["Generic Advice", "Stock Analysis"])
+tab1, tab2 = st.tabs(["Financial Advice", "Stock Analysis"])
 
 with tab1:
     display_chat_interface()
@@ -706,3 +751,8 @@ with tab2:
 st.markdown("---")
 st.markdown("### 🙏 Powered by Indian Financial Wisdom")
 st.markdown("Data sources: Yahoo Finance, Groq LLM, Tavily, and Indian financial literature.")
+
+# Handle any rerun flags set during the session
+if st.session_state.rerun_flag:
+    st.session_state.rerun_flag = False
+    st.rerun()
