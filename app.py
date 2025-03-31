@@ -263,14 +263,23 @@ def display_stock_analysis():
                             stock_data.index = pd.to_datetime(stock_data.index)
                         
                         try:
-                            # Create different chart types
+                            # Make sure all data is properly formatted for charts
+                            # Convert any values to numeric if they aren't already
+                            for col in ['Open', 'High', 'Low', 'Close', 'Volume']:
+                                if col in stock_data.columns:
+                                    stock_data[col] = pd.to_numeric(stock_data[col], errors='coerce')
+                            
+                            # Check for NaN values and clean them
+                            stock_data = stock_data.dropna(subset=['Close'])
+                            
+                            # Create different chart types using numpy arrays to avoid Series.format errors
                             if selected_chart == "Candlestick":
                                 fig.add_trace(go.Candlestick(
                                     x=stock_data.index,
-                                    open=stock_data['Open'],
-                                    high=stock_data['High'], 
-                                    low=stock_data['Low'],
-                                    close=stock_data['Close'],
+                                    open=stock_data['Open'].values,  # Convert to numpy array
+                                    high=stock_data['High'].values, 
+                                    low=stock_data['Low'].values,
+                                    close=stock_data['Close'].values,
                                     name='Price',
                                     increasing_line_color='#00BD9D',
                                     decreasing_line_color='#FF5252'
@@ -278,10 +287,10 @@ def display_stock_analysis():
                             elif selected_chart == "OHLC":
                                 fig.add_trace(go.Ohlc(
                                     x=stock_data.index,
-                                    open=stock_data['Open'],
-                                    high=stock_data['High'],
-                                    low=stock_data['Low'],
-                                    close=stock_data['Close'],
+                                    open=stock_data['Open'].values,
+                                    high=stock_data['High'].values,
+                                    low=stock_data['Low'].values,
+                                    close=stock_data['Close'].values,
                                     name='Price',
                                     increasing_line_color='#00BD9D',
                                     decreasing_line_color='#FF5252'
@@ -289,17 +298,18 @@ def display_stock_analysis():
                             else:  # Line chart
                                 fig.add_trace(go.Scatter(
                                     x=stock_data.index,
-                                    y=stock_data['Close'],
+                                    y=stock_data['Close'].values,  # Convert to numpy array
                                     mode='lines',
                                     name='Close Price',
                                     line=dict(color='#00BD9D', width=2)
                                 ))
                             
-                            # Add volume chart
+                            # Add volume chart with numpy array values
                             if 'Volume' in stock_data.columns and not stock_data['Volume'].isna().all():
+                                volume_values = stock_data['Volume'].values  # Convert to numpy array
                                 fig.add_trace(go.Bar(
                                     x=stock_data.index,
-                                    y=stock_data['Volume'],
+                                    y=volume_values,
                                     name='Volume',
                                     marker=dict(color='rgba(100, 100, 255, 0.3)'),
                                     yaxis='y2'
@@ -378,13 +388,14 @@ def display_stock_analysis():
                             "Dividend Yield": f"{stock_info.get('dividendYield', 0) * 100:.2f}%" if stock_info.get('dividendYield') else "N/A"
                         }
                         
-                        # Create a cleaner representation to avoid Arrow conversion issues
-                        metrics_list = []
+                        # Avoid dataframe conversion issues by formatting the data directly with HTML
+                        metrics_html = "<table width='100%'><tr><th>Metric</th><th>Value</th></tr>"
                         for metric, value in metrics_data.items():
-                            metrics_list.append({"Metric": metric, "Value": str(value)})
+                            metrics_html += f"<tr><td>{metric}</td><td>{value}</td></tr>"
+                        metrics_html += "</table>"
                         
-                        metrics_df = pd.DataFrame(metrics_list)
-                        st.table(metrics_df)
+                        # Use markdown to display the table
+                        st.markdown(metrics_html, unsafe_allow_html=True)
                     
                     with metrics_col2:
                         st.subheader("Technical Indicators")
@@ -414,47 +425,58 @@ def display_stock_analysis():
                             "Price vs 200-Day MA": f"{(last_close/ma200 - 1) * 100:.2f}%" if not pd.isna(ma200) else "N/A"
                         }
                         
-                        # Create a cleaner representation to avoid Arrow conversion issues
-                        tech_list = []
+                        # Avoid dataframe conversion issues by formatting the data directly with HTML
+                        tech_html = "<table width='100%'><tr><th>Indicator</th><th>Value</th></tr>"
                         for indicator, value in tech_data.items():
-                            tech_list.append({"Indicator": indicator, "Value": str(value)})
+                            # Color code percentage values
+                            if "%" in str(value) and not value == "N/A":
+                                if value.startswith("-"):
+                                    tech_html += f"<tr><td>{indicator}</td><td style='color:#FF5252'>{value}</td></tr>"
+                                else:
+                                    tech_html += f"<tr><td>{indicator}</td><td style='color:#00BD9D'>{value}</td></tr>"
+                            else:
+                                tech_html += f"<tr><td>{indicator}</td><td>{value}</td></tr>"
+                        tech_html += "</table>"
                         
-                        tech_df = pd.DataFrame(tech_list)
-                        st.table(tech_df)
+                        # Use markdown to display the table
+                        st.markdown(tech_html, unsafe_allow_html=True)
                 
                 with stock_analysis_tabs[1]:
                     # Moving Averages Chart
                     ma_fig = go.Figure()
                     
-                    # Add price
+                    # Add price with numpy array values
                     ma_fig.add_trace(go.Scatter(
                         x=stock_data.index,
-                        y=stock_data['Close'],
+                        y=stock_data['Close'].values,  # Convert to numpy array
                         mode='lines',
                         name='Close Price',
                         line=dict(color='#FFFFFF', width=2)
                     ))
                     
-                    # Add moving averages
+                    # Add moving averages with numpy array values
+                    ma20_series = stock_data['Close'].rolling(window=20).mean()
                     ma_fig.add_trace(go.Scatter(
                         x=stock_data.index,
-                        y=stock_data['Close'].rolling(window=20).mean(),
+                        y=ma20_series.values,  # Convert to numpy array
                         mode='lines',
                         name='20-Day MA',
                         line=dict(color='#00BD9D', width=1.5)
                     ))
                     
+                    ma50_series = stock_data['Close'].rolling(window=50).mean()
                     ma_fig.add_trace(go.Scatter(
                         x=stock_data.index,
-                        y=stock_data['Close'].rolling(window=50).mean(),
+                        y=ma50_series.values,  # Convert to numpy array
                         mode='lines',
                         name='50-Day MA',
                         line=dict(color='#FF9800', width=1.5)
                     ))
                     
+                    ma200_series = stock_data['Close'].rolling(window=200).mean()
                     ma_fig.add_trace(go.Scatter(
                         x=stock_data.index,
-                        y=stock_data['Close'].rolling(window=200).mean(),
+                        y=ma200_series.values,  # Convert to numpy array
                         mode='lines',
                         name='200-Day MA',
                         line=dict(color='#F44336', width=1.5)
@@ -541,23 +563,22 @@ def display_stock_analysis():
                         half_year_price = stock_data.loc[stock_data.index <= half_year_ago, 'Close'].iloc[-1] if not stock_data.loc[stock_data.index <= half_year_ago, 'Close'].empty else None
                         year_price = stock_data.loc[stock_data.index <= year_ago, 'Close'].iloc[-1] if not stock_data.loc[stock_data.index <= year_ago, 'Close'].empty else None
                         
-                        perf_data = {
-                            "Period": ["1 Week", "1 Month", "3 Months", "6 Months", "1 Year", "YTD"],
-                            "Return": [
-                                f"{((current_price / week_price) - 1) * 100:.2f}%" if week_price else "N/A",
-                                f"{((current_price / month_price) - 1) * 100:.2f}%" if month_price else "N/A",
-                                f"{((current_price / quarter_price) - 1) * 100:.2f}%" if quarter_price else "N/A",
-                                f"{((current_price / half_year_price) - 1) * 100:.2f}%" if half_year_price else "N/A",
-                                f"{((current_price / year_price) - 1) * 100:.2f}%" if year_price else "N/A",
-                                f"{((current_price / stock_data[stock_data.index.year == datetime.now().year].iloc[0]['Close']) - 1) * 100:.2f}%" if not stock_data[stock_data.index.year == datetime.now().year].empty else "N/A"
-                            ]
-                        }
+                        # Create periods and calculate returns as strings with percentage formatting
+                        periods = ["1 Week", "1 Month", "3 Months", "6 Months", "1 Year", "YTD"]
+                        return_values = [
+                            f"{((current_price / week_price) - 1) * 100:.2f}%" if week_price else "N/A",
+                            f"{((current_price / month_price) - 1) * 100:.2f}%" if month_price else "N/A",
+                            f"{((current_price / quarter_price) - 1) * 100:.2f}%" if quarter_price else "N/A",
+                            f"{((current_price / half_year_price) - 1) * 100:.2f}%" if half_year_price else "N/A",
+                            f"{((current_price / year_price) - 1) * 100:.2f}%" if year_price else "N/A",
+                            f"{((current_price / stock_data[stock_data.index.year == datetime.now().year].iloc[0]['Close']) - 1) * 100:.2f}%" if not stock_data[stock_data.index.year == datetime.now().year].empty else "N/A"
+                        ]
                         
-                        perf_df = pd.DataFrame(perf_data)
+                        # We don't need perf_df anymore, since we're using direct lists for plotting
                         
                         # Display returns as bar chart - convert to proper format for plotting
                         returns = []
-                        for ret in perf_df['Return']:
+                        for ret in return_values:
                             if ret == "N/A":
                                 returns.append(0)
                             else:
@@ -571,8 +592,8 @@ def display_stock_analysis():
                         
                         perf_fig = go.Figure()
                         perf_fig.add_trace(go.Bar(
-                            x=perf_df['Period'],
-                            y=returns,
+                            x=periods,  # Use the periods list directly
+                            y=returns,  # Already numeric
                             marker_color=colors,
                             text=[f"{r:.2f}%" for r in returns],
                             textposition='auto'
@@ -617,8 +638,10 @@ def display_stock_analysis():
                         with vol_col2:
                             # Create returns distribution
                             vol_fig = go.Figure()
+                            # Use numpy array for histogram data
+                            daily_returns = stock_data['Daily Return'].dropna().values
                             vol_fig.add_trace(go.Histogram(
-                                x=stock_data['Daily Return'].dropna(),
+                                x=daily_returns,
                                 nbinsx=30,
                                 marker_color='#00BD9D'
                             ))

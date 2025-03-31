@@ -18,15 +18,36 @@ def get_stock_data(ticker, period="1mo", interval="1d"):
         pandas.DataFrame: Stock price data
     """
     try:
-        # Fetch data
-        stock_data = yf.download(ticker, period=period, interval=interval, progress=False)
+        # Special handling for Nifty indices that aren't working with standard names
+        if ticker == "NIFTY50" or ticker == "NIFTY 50":
+            ticker = "^NSEI"  # Use the official Yahoo Finance symbol
+        elif ticker == "SENSEX" or ticker == "BSE SENSEX":
+            ticker = "^BSESN"  # Use the official Yahoo Finance symbol
+        elif ticker == "NIFTYBANK" or ticker == "NIFTY BANK":
+            ticker = "^NSEBANK"  # Use the official Yahoo Finance symbol
+            
+        # Fetch data with auto adjust turned off to avoid conversion issues
+        stock_data = yf.download(ticker, period=period, interval=interval, progress=False, auto_adjust=False)
         
+        if stock_data.empty:
+            print(f"No data found for ticker {ticker}")
+            # Try alternative for Indian stocks if no data found
+            if ticker.endswith(".NS"):
+                alternative = ticker.replace(".NS", ".BO")
+                print(f"Trying alternative symbol: {alternative}")
+                stock_data = yf.download(alternative, period=period, interval=interval, progress=False, auto_adjust=False)
+            elif not ticker.startswith('^') and not ticker.endswith((".NS", ".BO")):
+                # Try with .NS extension
+                alternative = f"{ticker}.NS"
+                print(f"Trying with NSE extension: {alternative}")
+                stock_data = yf.download(alternative, period=period, interval=interval, progress=False, auto_adjust=False)
+                
         if stock_data.empty:
             return None
             
         return stock_data
     except Exception as e:
-        print(f"Error fetching stock data: {str(e)}")
+        print(f"Error fetching stock data for {ticker}: {str(e)}")
         return None
 
 def get_stock_info(ticker):
@@ -40,38 +61,86 @@ def get_stock_info(ticker):
         dict: Stock information
     """
     try:
-        stock = yf.Ticker(ticker)
-        info = stock.info
+        # Special handling for indices
+        if ticker == "NIFTY50" or ticker == "NIFTY 50":
+            ticker = "^NSEI"  # Use the official Yahoo Finance symbol
+        elif ticker == "SENSEX" or ticker == "BSE SENSEX":
+            ticker = "^BSESN"  # Use the official Yahoo Finance symbol
+        elif ticker == "NIFTYBANK" or ticker == "NIFTY BANK":
+            ticker = "^NSEBANK"  # Use the official Yahoo Finance symbol
         
-        # Calculate day change
-        current_price = info.get('currentPrice', info.get('regularMarketPrice', 0))
-        previous_close = info.get('previousClose', 0)
-        day_change_percent = ((current_price / previous_close) - 1) * 100 if previous_close else 0
+        # First try to get the latest stock data
+        stock_data = get_stock_data(ticker, period="5d")
+        if stock_data is None or stock_data.empty:
+            print(f"No recent data found for {ticker}")
+            # Return default info for the ticker
+            return {
+                'longName': ticker,
+                'currentPrice': 0,
+                'dayChange': 0,
+                'marketCap': 0,
+                'fiftyTwoWeekHigh': 0,
+                'fiftyTwoWeekLow': 0
+            }
+            
+        # Get basic info from the stock data
+        latest_data = stock_data.iloc[-1]
+        prev_data = stock_data.iloc[-2] if len(stock_data) > 1 else latest_data
         
-        # Create a dictionary with relevant information
-        stock_info = {
-            'longName': info.get('longName', ticker),
-            'sector': info.get('sector', 'N/A'),
-            'industry': info.get('industry', 'N/A'),
-            'currentPrice': current_price,
-            'dayChange': day_change_percent,
-            'marketCap': info.get('marketCap', 0),
-            'fiftyTwoWeekHigh': info.get('fiftyTwoWeekHigh', 0),
-            'fiftyTwoWeekLow': info.get('fiftyTwoWeekLow', 0),
-            'trailingPE': info.get('trailingPE', None),
-            'forwardPE': info.get('forwardPE', None),
-            'pegRatio': info.get('pegRatio', None),
-            'priceToBook': info.get('priceToBook', None),
-            'dividendYield': info.get('dividendYield', None),
-            'beta': info.get('beta', None),
-            'averageVolume': info.get('averageVolume', 0),
-            'averageVolume10days': info.get('averageVolume10days', 0)
-        }
+        current_price = latest_data['Close']
+        previous_close = prev_data['Close']
+        day_change_percent = ((current_price / previous_close) - 1) * 100 if previous_close > 0 else 0
         
-        return stock_info
+        # Try to get more detailed info from ticker
+        try:
+            stock = yf.Ticker(ticker)
+            info = stock.info
+            
+            # Create a dictionary with relevant information
+            stock_info = {
+                'longName': info.get('longName', ticker),
+                'sector': info.get('sector', 'N/A'),
+                'industry': info.get('industry', 'N/A'),
+                'currentPrice': current_price,
+                'dayChange': day_change_percent,
+                'marketCap': info.get('marketCap', 0),
+                'fiftyTwoWeekHigh': info.get('fiftyTwoWeekHigh', stock_data['High'].max()),
+                'fiftyTwoWeekLow': info.get('fiftyTwoWeekLow', stock_data['Low'].min()),
+                'trailingPE': info.get('trailingPE', None),
+                'forwardPE': info.get('forwardPE', None),
+                'pegRatio': info.get('pegRatio', None),
+                'priceToBook': info.get('priceToBook', None),
+                'dividendYield': info.get('dividendYield', None),
+                'beta': info.get('beta', None),
+                'averageVolume': info.get('averageVolume', stock_data['Volume'].mean()),
+                'averageVolume10days': info.get('averageVolume10days', stock_data['Volume'].mean())
+            }
+            
+            return stock_info
+        except Exception as ticker_error:
+            print(f"Error getting detailed stock info: {str(ticker_error)}")
+            # If detailed info fails, return basic info from the data we have
+            return {
+                'longName': ticker,
+                'currentPrice': current_price,
+                'dayChange': day_change_percent,
+                'marketCap': 0,
+                'fiftyTwoWeekHigh': stock_data['High'].max(),
+                'fiftyTwoWeekLow': stock_data['Low'].min(),
+                'trailingPE': None,
+                'forwardPE': None
+            }
     except Exception as e:
-        print(f"Error getting stock info: {str(e)}")
-        return {}
+        print(f"Error getting any stock info for {ticker}: {str(e)}")
+        # Return minimal info
+        return {
+            'longName': ticker,
+            'currentPrice': 0,
+            'dayChange': 0,
+            'marketCap': 0,
+            'fiftyTwoWeekHigh': 0,
+            'fiftyTwoWeekLow': 0
+        }
 
 def get_nifty50_list():
     """
