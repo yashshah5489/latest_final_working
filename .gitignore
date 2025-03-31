@@ -49,3 +49,9 @@ uv.lock
 # Operating System
 .DS_Store
 Thumbs.db
+
+attached_assets
+replit.nix
+run_local.sh
+uv.lock
+pyproject.toml
