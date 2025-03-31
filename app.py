@@ -170,48 +170,76 @@ def display_stock_analysis():
                     with col4:
                         st.metric("Market Cap", f"₹{stock_info.get('marketCap', 0)/10000000:,.2f}Cr")
                 
-                # Create chart
+                # Debug information in sidebar
+                with st.sidebar:
+                    st.markdown("### Debug Information")
+                    st.markdown(f"Stock data shape: {stock_data.shape}")
+                    st.markdown(f"Data columns: {list(stock_data.columns)}")
+                    st.markdown("First few rows:")
+                    st.dataframe(stock_data.head(3))
+                
+                # Create chart and handle errors
                 fig = go.Figure()
                 
-                if selected_chart == "Candlestick":
-                    fig.add_trace(go.Candlestick(
-                        x=stock_data.index,
-                        open=stock_data['Open'],
-                        high=stock_data['High'],
-                        low=stock_data['Low'],
-                        close=stock_data['Close'],
-                        name='Price',
-                        increasing_line_color='#00BD9D',
-                        decreasing_line_color='#FF5252'
-                    ))
-                elif selected_chart == "OHLC":
-                    fig.add_trace(go.Ohlc(
-                        x=stock_data.index,
-                        open=stock_data['Open'],
-                        high=stock_data['High'],
-                        low=stock_data['Low'],
-                        close=stock_data['Close'],
-                        name='Price',
-                        increasing_line_color='#00BD9D',
-                        decreasing_line_color='#FF5252'
-                    ))
-                else:  # Line chart
-                    fig.add_trace(go.Scatter(
-                        x=stock_data.index,
-                        y=stock_data['Close'],
-                        mode='lines',
-                        name='Close Price',
-                        line=dict(color='#00BD9D', width=2)
-                    ))
-                
-                # Add volume chart
-                fig.add_trace(go.Bar(
-                    x=stock_data.index,
-                    y=stock_data['Volume'],
-                    name='Volume',
-                    marker=dict(color='rgba(100, 100, 255, 0.3)'),
-                    yaxis='y2'
-                ))
+                if stock_data.empty:
+                    st.error("No data available for the selected stock and time period.")
+                else:
+                    # Check for required columns
+                    required_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
+                    missing_columns = [col for col in required_columns if col not in stock_data.columns]
+                    
+                    if missing_columns:
+                        st.error(f"Missing required columns: {', '.join(missing_columns)}")
+                    else:
+                        # Ensure index is datetime
+                        if not isinstance(stock_data.index, pd.DatetimeIndex):
+                            stock_data.index = pd.to_datetime(stock_data.index)
+                        
+                        try:
+                            # Create different chart types
+                            if selected_chart == "Candlestick":
+                                fig.add_trace(go.Candlestick(
+                                    x=stock_data.index,
+                                    open=stock_data['Open'],
+                                    high=stock_data['High'], 
+                                    low=stock_data['Low'],
+                                    close=stock_data['Close'],
+                                    name='Price',
+                                    increasing_line_color='#00BD9D',
+                                    decreasing_line_color='#FF5252'
+                                ))
+                            elif selected_chart == "OHLC":
+                                fig.add_trace(go.Ohlc(
+                                    x=stock_data.index,
+                                    open=stock_data['Open'],
+                                    high=stock_data['High'],
+                                    low=stock_data['Low'],
+                                    close=stock_data['Close'],
+                                    name='Price',
+                                    increasing_line_color='#00BD9D',
+                                    decreasing_line_color='#FF5252'
+                                ))
+                            else:  # Line chart
+                                fig.add_trace(go.Scatter(
+                                    x=stock_data.index,
+                                    y=stock_data['Close'],
+                                    mode='lines',
+                                    name='Close Price',
+                                    line=dict(color='#00BD9D', width=2)
+                                ))
+                            
+                            # Add volume chart
+                            if 'Volume' in stock_data.columns and not stock_data['Volume'].isna().all():
+                                fig.add_trace(go.Bar(
+                                    x=stock_data.index,
+                                    y=stock_data['Volume'],
+                                    name='Volume',
+                                    marker=dict(color='rgba(100, 100, 255, 0.3)'),
+                                    yaxis='y2'
+                                ))
+                                
+                        except Exception as e:
+                            st.error(f"Error creating chart: {str(e)}")
                 
                 # Set layout
                 fig.update_layout(
@@ -269,8 +297,12 @@ def display_stock_analysis():
                             "Dividend Yield": f"{stock_info.get('dividendYield', 0) * 100:.2f}%" if stock_info.get('dividendYield') else "N/A"
                         }
                         
-                        metrics_df = pd.DataFrame([metrics_data]).T.reset_index()
-                        metrics_df.columns = ["Metric", "Value"]
+                        # Create a cleaner representation to avoid Arrow conversion issues
+                        metrics_list = []
+                        for metric, value in metrics_data.items():
+                            metrics_list.append({"Metric": metric, "Value": str(value)})
+                        
+                        metrics_df = pd.DataFrame(metrics_list)
                         st.table(metrics_df)
                     
                     with metrics_col2:
@@ -301,8 +333,12 @@ def display_stock_analysis():
                             "Price vs 200-Day MA": f"{(last_close/ma200 - 1) * 100:.2f}%" if not pd.isna(ma200) else "N/A"
                         }
                         
-                        tech_df = pd.DataFrame([tech_data]).T.reset_index()
-                        tech_df.columns = ["Indicator", "Value"]
+                        # Create a cleaner representation to avoid Arrow conversion issues
+                        tech_list = []
+                        for indicator, value in tech_data.items():
+                            tech_list.append({"Indicator": indicator, "Value": str(value)})
+                        
+                        tech_df = pd.DataFrame(tech_list)
                         st.table(tech_df)
                 
                 with stock_analysis_tabs[1]:
@@ -438,8 +474,18 @@ def display_stock_analysis():
                         
                         perf_df = pd.DataFrame(perf_data)
                         
-                        # Display returns as bar chart
-                        returns = [float(ret.strip('%')) if ret != "N/A" else 0 for ret in perf_df['Return']]
+                        # Display returns as bar chart - convert to proper format for plotting
+                        returns = []
+                        for ret in perf_df['Return']:
+                            if ret == "N/A":
+                                returns.append(0)
+                            else:
+                                try:
+                                    # Remove the % sign and convert to float
+                                    returns.append(float(ret.strip('%')))
+                                except:
+                                    returns.append(0)
+                        
                         colors = ['#00BD9D' if r >= 0 else '#FF5252' for r in returns]
                         
                         perf_fig = go.Figure()
