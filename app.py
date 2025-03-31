@@ -32,6 +32,9 @@ if "stock_data" not in st.session_state:
 
 if "time_period" not in st.session_state:
     st.session_state.time_period = "1mo"
+    
+if "news_sources" not in st.session_state:
+    st.session_state.news_sources = []
 
 def display_chat_interface():
     st.header("🇮🇳 Indian Financial Assistant")
@@ -56,8 +59,11 @@ def display_chat_interface():
         with st.chat_message("assistant"):
             with st.spinner("Processing your query..."):
                 try:
-                    # Get relevant financial news
-                    news = get_financial_news(user_query)
+                    # Get relevant financial news and sources
+                    news, news_sources = get_financial_news(user_query)
+                    
+                    # Store news sources in session state for display
+                    st.session_state.news_sources = news_sources
                     
                     # Get financial wisdom
                     wisdom = get_financial_wisdom(user_query)
@@ -195,10 +201,12 @@ def display_stock_analysis():
         
         # Custom stock input
         custom_stock = st.text_input("Or enter a specific stock symbol (add .NS for NSE or .BO for BSE):", 
-                                     value=st.session_state.selected_stock if st.session_state.selected_stock else "")
+                                     value="" if st.session_state.selected_stock in [entry for entry in stock_options if entry != "Search for a stock..."] else (st.session_state.selected_stock if st.session_state.selected_stock else ""))
         
         if custom_stock:
-            st.session_state.selected_stock = custom_stock
+            # Only update if the user has actually entered something new
+            if custom_stock != st.session_state.selected_stock:
+                st.session_state.selected_stock = custom_stock
 
     with col2:
         # Time period selector
@@ -237,13 +245,13 @@ def display_stock_analysis():
                     with col4:
                         st.metric("Market Cap", f"₹{stock_info.get('marketCap', 0)/10000000:,.2f}Cr")
                 
-                # Debug information in sidebar
-                with st.sidebar:
-                    st.markdown("### Debug Information")
-                    st.markdown(f"Stock data shape: {stock_data.shape}")
-                    st.markdown(f"Data columns: {list(stock_data.columns)}")
-                    st.markdown("First few rows:")
-                    st.dataframe(stock_data.head(3))
+                # Debugging code can be uncommented if needed
+                # with st.sidebar.expander("Technical Details", expanded=False):
+                #     st.markdown("### Data Information")
+                #     st.markdown(f"Stock data shape: {stock_data.shape}")
+                #     st.markdown(f"Data columns: {list(stock_data.columns)}")
+                #     st.markdown("First few rows:")
+                #     st.dataframe(stock_data.head(3))
                 
                 # Create chart and handle errors
                 fig = go.Figure()
@@ -672,6 +680,19 @@ def display_stock_analysis():
 # Main app layout
 st.title("🇮🇳 India-Focused Financial Assistant")
 
+# Sidebar for news sources
+with st.sidebar:
+    if "news_sources" in st.session_state and st.session_state.news_sources:
+        st.markdown("### 📰 Latest News Sources")
+        for i, source in enumerate(st.session_state.news_sources[:3]):  # Display top 3 sources
+            # Make sure we have all the required keys
+            title = source.get('title', 'Article')
+            url = source.get('url', '#')
+            date = source.get('date', '')
+            st.markdown(f"{i+1}. [{title}]({url}) {date}")
+    
+    st.markdown("---")
+
 # Create tabs
 tab1, tab2 = st.tabs(["Generic Advice", "Stock Analysis"])
 
@@ -684,4 +705,4 @@ with tab2:
 # Footer
 st.markdown("---")
 st.markdown("### 🙏 Powered by Indian Financial Wisdom")
-st.markdown("Data sources: Yahoo Finance, Groq LLM, and Indian financial literature.")
+st.markdown("Data sources: Yahoo Finance, Groq LLM, Tavily, and Indian financial literature.")

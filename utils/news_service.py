@@ -14,7 +14,9 @@ def get_financial_news(query):
         query (str): The user's query to search for relevant news
     
     Returns:
-        str: A summary of relevant financial news
+        tuple: (formatted_news, news_sources_list)
+            - formatted_news (str): A summary of relevant financial news
+            - news_sources_list (list): List of article sources with titles and URLs
     """
     try:
         # Get Tavily API key from environment variables
@@ -89,9 +91,13 @@ def get_financial_news(query):
             
             # Format the results
             if not search_response.get("results"):
-                return "No relevant financial news found for your query."
-        
-        formatted_news = "## Relevant Financial News:\n\n"
+                return "No relevant financial news found for your query.", []
+            
+            formatted_news = "## Relevant Financial News:\n\n"
+            news_sources = []
+        else:
+            print(f"API request failed with status code: {response.status_code}")
+            return get_fallback_news([], query)
         
         for i, result in enumerate(search_response.get("results", [])[:5]):
             title = result.get("title", "No title")
@@ -119,8 +125,15 @@ def get_financial_news(query):
             
             formatted_news += f"{content}\n\n"
             formatted_news += f"[Read more]({url})\n\n"
+            
+            # Add to news sources list
+            news_sources.append({
+                "title": title,
+                "url": url,
+                "date": formatted_date
+            })
         
-        return formatted_news
+        return formatted_news, news_sources
     
     except Exception as e:
         print(f"Error in get_financial_news: {str(e)}")
@@ -149,7 +162,9 @@ def get_fallback_news(mentioned_terms=None, query=""):
         query (str): The original user query
     
     Returns:
-        str: A fallback news summary
+        tuple: (formatted_news, news_sources_list)
+            - formatted_news (str): A fallback news summary
+            - news_sources_list (list): Empty list since these are not real sources
     """
     current_date = datetime.now().strftime("%d %b %Y")
     
@@ -221,4 +236,7 @@ def get_fallback_news(mentioned_terms=None, query=""):
         formatted_news += f"### {i+1}. {news['title']}\n"
         formatted_news += f"{news['content']}\n\n"
     
-    return formatted_news
+    # Create empty sources list
+    fallback_sources = []
+    
+    return formatted_news, fallback_sources

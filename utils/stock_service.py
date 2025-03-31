@@ -18,14 +18,16 @@ def get_stock_data(ticker, period="1mo", interval="1d"):
         pandas.DataFrame: Stock price data
     """
     try:
-        # Special handling for Nifty indices that aren't working with standard names
-        if ticker == "NIFTY50" or ticker == "NIFTY 50":
+        # Handle different notations and normalize ticker symbols
+        if ticker == "Nifty50" or ticker == "NIFTY50" or ticker == "NIFTY 50" or ticker.lower() == "nifty50":
             ticker = "^NSEI"  # Use the official Yahoo Finance symbol
-        elif ticker == "SENSEX" or ticker == "BSE SENSEX":
+        elif ticker == "SENSEX" or ticker == "BSE SENSEX" or ticker.lower() == "sensex":
             ticker = "^BSESN"  # Use the official Yahoo Finance symbol
-        elif ticker == "NIFTYBANK" or ticker == "NIFTY BANK":
+        elif ticker == "NIFTYBANK" or ticker == "NIFTY BANK" or ticker.lower() == "niftybank":
             ticker = "^NSEBANK"  # Use the official Yahoo Finance symbol
             
+        print(f"Downloading data for ticker: {ticker}")
+        
         # Fetch data with auto adjust turned off to avoid conversion issues
         stock_data = yf.download(ticker, period=period, interval=interval, progress=False, auto_adjust=False)
         
@@ -41,10 +43,18 @@ def get_stock_data(ticker, period="1mo", interval="1d"):
                 alternative = f"{ticker}.NS"
                 print(f"Trying with NSE extension: {alternative}")
                 stock_data = yf.download(alternative, period=period, interval=interval, progress=False, auto_adjust=False)
-                
+        
         if stock_data.empty:
             return None
-            
+        
+        # Convert data to numeric types to avoid Series.format errors
+        for col in stock_data.columns:
+            stock_data[col] = pd.to_numeric(stock_data[col], errors='coerce')
+        
+        # Drop rows with NaN values
+        stock_data = stock_data.dropna(subset=['Close'])
+        
+        print(f"Successfully downloaded data for {ticker}, shape: {stock_data.shape}")
         return stock_data
     except Exception as e:
         print(f"Error fetching stock data for {ticker}: {str(e)}")
