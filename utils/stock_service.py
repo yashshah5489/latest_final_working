@@ -126,8 +126,8 @@ def get_stock_data(ticker, period="1mo", interval="1d"):
         for col in stock_data.columns:
             stock_data[col] = pd.to_numeric(stock_data[col], errors='coerce')
         
-        # Fill any NaN values
-        stock_data = stock_data.fillna(method='ffill').fillna(method='bfill')
+        # Fill any NaN values (using newer pandas methods instead of deprecated ones)
+        stock_data = stock_data.ffill().bfill()
         
         if len(stock_data) == 0:
             print(f"No valid data rows for {ticker}")
@@ -215,8 +215,8 @@ def calculate_technical_indicators(stock_data):
                 obv.append(obv[-1])
         df['OBV'] = obv
         
-        # Clean up NANs
-        df = df.fillna(method='bfill').fillna(method='ffill')
+        # Clean up NANs (using newer pandas methods)
+        df = df.bfill().ffill()
         
         return df
     except Exception as e:

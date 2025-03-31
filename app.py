@@ -605,7 +605,13 @@ def display_stock_analysis():
                             momentum_html = "<table width='100%'><tr><th>Indicator</th><th>Value</th><th>Signal</th></tr>"
                             momentum_html += f"<tr><td>RSI (14)</td><td>{rsi_text}</td><td>Overbought >70, Oversold <30</td></tr>"
                             momentum_html += f"<tr><td>MACD</td><td>{macd_text}</td><td>{signal_text}</td></tr>"
-                            momentum_html += f"<tr><td>Stochastic %K</td><td>{stoch_k_text}</td><td>{stoch_d:.2f if isinstance(stoch_d, (int, float)) else 'N/A'}</td></tr>"
+                            # Add stochastic %K with safer formatting
+                            momentum_html += f"<tr><td>Stochastic %K</td><td>{stoch_k_text}</td><td>"
+                            if isinstance(stoch_d, (int, float)):
+                                momentum_html += f"{stoch_d:.2f}"
+                            else:
+                                momentum_html += "N/A"
+                            momentum_html += "</td></tr>"
                             momentum_html += "</table>"
                             
                             st.markdown(momentum_html, unsafe_allow_html=True)
@@ -633,11 +639,28 @@ def display_stock_analysis():
                             obv = tech_indicators.get('obv', 'N/A')
                             
                             vol_html = "<table width='100%'><tr><th>Indicator</th><th>Value</th></tr>"
-                            vol_html += f"<tr><td>BB Upper</td><td>{upper_band:.2f if isinstance(upper_band, (int, float)) else 'N/A'}</td></tr>"
-                            vol_html += f"<tr><td>BB Lower</td><td>{lower_band:.2f if isinstance(lower_band, (int, float)) else 'N/A'}</td></tr>"
+                            # Use string formatting with conditional checks to avoid errors
+                            if isinstance(upper_band, (int, float)):
+                                vol_html += f"<tr><td>BB Upper</td><td>{upper_band:.2f}</td></tr>"
+                            else:
+                                vol_html += "<tr><td>BB Upper</td><td>N/A</td></tr>"
+                                
+                            if isinstance(lower_band, (int, float)):
+                                vol_html += f"<tr><td>BB Lower</td><td>{lower_band:.2f}</td></tr>"
+                            else:
+                                vol_html += "<tr><td>BB Lower</td><td>N/A</td></tr>"
+                                
                             vol_html += f"<tr><td>Position</td><td style='color:{band_color}'>{band_status}</td></tr>"
-                            vol_html += f"<tr><td>ATR (14)</td><td>{atr:.2f if isinstance(atr, (int, float)) else 'N/A'}</td></tr>"
-                            vol_html += f"<tr><td>OBV</td><td>{obv:,.0f if isinstance(obv, (int, float)) else 'N/A'}</td></tr>"
+                            
+                            if isinstance(atr, (int, float)):
+                                vol_html += f"<tr><td>ATR (14)</td><td>{atr:.2f}</td></tr>"
+                            else:
+                                vol_html += "<tr><td>ATR (14)</td><td>N/A</td></tr>"
+                                
+                            if isinstance(obv, (int, float)):
+                                vol_html += f"<tr><td>OBV</td><td>{obv:,.0f}</td></tr>"
+                            else:
+                                vol_html += "<tr><td>OBV</td><td>N/A</td></tr>"
                             vol_html += "</table>"
                             
                             st.markdown(vol_html, unsafe_allow_html=True)
@@ -654,14 +677,44 @@ def display_stock_analysis():
                     with f_col1:
                         st.markdown("#### Profitability Metrics")
                         
-                        profit_data = {
-                            "Profit Margin": f"{stock_info.get('profitMargins', 'N/A'):.2f}%" if stock_info.get('profitMargins') is not None else "N/A",
-                            "Operating Margin": f"{stock_info.get('operatingMargins', 'N/A'):.2f}%" if stock_info.get('operatingMargins') is not None else "N/A",
-                            "Return on Assets": f"{stock_info.get('returnOnAssets', 'N/A'):.2f}%" if stock_info.get('returnOnAssets') is not None else "N/A",
-                            "Return on Equity": f"{stock_info.get('returnOnEquity', 'N/A'):.2f}%" if stock_info.get('returnOnEquity') is not None else "N/A",
-                            "Revenue Growth": f"{stock_info.get('revenueGrowth', 'N/A'):.2f}%" if stock_info.get('revenueGrowth') is not None else "N/A",
-                            "Earnings Growth": f"{stock_info.get('earningsGrowth', 'N/A'):.2f}%" if stock_info.get('earningsGrowth') is not None else "N/A"
-                        }
+                        # Use safer approach for profit data formatting
+                        profit_data = {}
+                        
+                        # Profit Margin
+                        if stock_info.get('profitMargins') is not None:
+                            profit_data["Profit Margin"] = f"{stock_info.get('profitMargins'):.2f}%"
+                        else:
+                            profit_data["Profit Margin"] = "N/A"
+                            
+                        # Operating Margin
+                        if stock_info.get('operatingMargins') is not None:
+                            profit_data["Operating Margin"] = f"{stock_info.get('operatingMargins'):.2f}%"
+                        else:
+                            profit_data["Operating Margin"] = "N/A"
+                            
+                        # Return on Assets
+                        if stock_info.get('returnOnAssets') is not None:
+                            profit_data["Return on Assets"] = f"{stock_info.get('returnOnAssets'):.2f}%"
+                        else:
+                            profit_data["Return on Assets"] = "N/A"
+                            
+                        # Return on Equity
+                        if stock_info.get('returnOnEquity') is not None:
+                            profit_data["Return on Equity"] = f"{stock_info.get('returnOnEquity'):.2f}%"
+                        else:
+                            profit_data["Return on Equity"] = "N/A"
+                            
+                        # Revenue Growth
+                        if stock_info.get('revenueGrowth') is not None:
+                            profit_data["Revenue Growth"] = f"{stock_info.get('revenueGrowth'):.2f}%"
+                        else:
+                            profit_data["Revenue Growth"] = "N/A"
+                            
+                        # Earnings Growth
+                        if stock_info.get('earningsGrowth') is not None:
+                            profit_data["Earnings Growth"] = f"{stock_info.get('earningsGrowth'):.2f}%"
+                        else:
+                            profit_data["Earnings Growth"] = "N/A"
                         
                         profit_html = "<table width='100%'><tr><th>Metric</th><th>Value</th></tr>"
                         for metric, value in profit_data.items():
@@ -673,14 +726,34 @@ def display_stock_analysis():
                     with f_col2:
                         st.markdown("#### Financial Health")
                         
-                        health_data = {
-                            "Total Cash": f"₹{stock_info.get('totalCash', 0)/10000000:,.2f}Cr" if stock_info.get('totalCash') else "N/A",
-                            "Total Debt": f"₹{stock_info.get('totalDebt', 0)/10000000:,.2f}Cr" if stock_info.get('totalDebt') else "N/A",
-                            "Debt to Equity": stock_info.get('debtToEquity', 'N/A'),
-                            "Current Ratio": stock_info.get('currentRatio', 'N/A'),
-                            "Sector": stock_info.get('sector', 'N/A'),
-                            "Industry": stock_info.get('industry', 'N/A')
-                        }
+                        # Use safer approach for health data formatting
+                        health_data = {}
+                        
+                        # Total Cash - handle with extreme caution
+                        try:
+                            total_cash = stock_info.get('totalCash')
+                            if total_cash is not None and isinstance(total_cash, (int, float)) and total_cash > 0:
+                                health_data["Total Cash"] = f"₹{total_cash/10000000:,.2f}Cr"
+                            else:
+                                health_data["Total Cash"] = "N/A"
+                        except:
+                            health_data["Total Cash"] = "N/A"
+                            
+                        # Total Debt - handle with extreme caution
+                        try:
+                            total_debt = stock_info.get('totalDebt')
+                            if total_debt is not None and isinstance(total_debt, (int, float)) and total_debt > 0:
+                                health_data["Total Debt"] = f"₹{total_debt/10000000:,.2f}Cr"
+                            else:
+                                health_data["Total Debt"] = "N/A"
+                        except:
+                            health_data["Total Debt"] = "N/A"
+                            
+                        # Other metrics that don't need formatting
+                        health_data["Debt to Equity"] = stock_info.get('debtToEquity', 'N/A')
+                        health_data["Current Ratio"] = stock_info.get('currentRatio', 'N/A')
+                        health_data["Sector"] = stock_info.get('sector', 'N/A')
+                        health_data["Industry"] = stock_info.get('industry', 'N/A')
                         
                         health_html = "<table width='100%'><tr><th>Metric</th><th>Value</th></tr>"
                         for metric, value in health_data.items():
