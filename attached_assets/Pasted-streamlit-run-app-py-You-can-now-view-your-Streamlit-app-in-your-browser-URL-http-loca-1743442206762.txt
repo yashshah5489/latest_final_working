@@ -1,0 +1,66 @@
+streamlit run app.py
+
+  You can now view your Streamlit app in your browser.
+
+  URL: http://localhost:5000
+
+User selected: WIPRO (Nifty50)
+Nifty50 stock selected: WIPRO.NS
+Downloading data for ticker: WIPRO.NS
+Error fetching stock data for WIPRO.NS: arg must be a list, tuple, 1-d array, or Series
+User selected: WIPRO (Nifty50)
+Nifty50 stock selected: WIPRO.NS
+Downloading data for ticker: WIPRO.NS
+Error fetching stock data for WIPRO.NS: arg must be a list, tuple, 1-d array, or Series
+User selected: WIPRO (Nifty50)
+Nifty50 stock selected: WIPRO.NS
+Downloading data for ticker: WIPRO.NS
+Error fetching stock data for WIPRO.NS: arg must be a list, tuple, 1-d array, or Series
+User selected: WIPRO (Nifty50)
+Nifty50 stock selected: WIPRO.NS
+Downloading data for ticker: WIPRO.NS
+Error fetching stock data for WIPRO.NS: arg must be a list, tuple, 1-d array, or Series
+User selected: Nifty Bank (^NSEBANK)
+Index symbol directly used: ^NSEBANK
+Downloading data for ticker: ^NSEBANK
+Error fetching stock data for ^NSEBANK: arg must be a list, tuple, 1-d array, or Series
+User selected: TATAMOTORS (Sensex)
+Sensex stock selected: TATAMOTORS.NS
+Downloading data for ticker: TATAMOTORS.NS
+Error fetching stock data for TATAMOTORS.NS: arg must be a list, tuple, 1-d array, or Series
+User selected: NESTLEIND (Sensex)
+Sensex stock selected: NESTLEIND.NS
+Downloading data for ticker: NESTLEIND.NS
+Error fetching stock data for NESTLEIND.NS: arg must be a list, tuple, 1-d array, or Series
+User selected: TATACONSUM (Nifty50)
+Nifty50 stock selected: TATACONSUM.NS
+Downloading data for ticker: TATACONSUM.NS
+Error fetching stock data for TATACONSUM.NS: arg must be a list, tuple, 1-d array, or Series
+User selected: BHARTIARTL (Nifty50)
+Nifty50 stock selected: BHARTIARTL.NS
+Downloading data for ticker: BHARTIARTL.NS
+Error fetching stock data for BHARTIARTL.NS: arg must be a list, tuple, 1-d array, or Series
+User selected: BHARTIARTL (Nifty50)
+Nifty50 stock selected: BHARTIARTL.NS
+Downloading data for ticker: BHARTIARTL.NS
+Error fetching stock data for BHARTIARTL.NS: arg must be a list, tuple, 1-d array, or Series
+User selected: BHARTIARTL (Nifty50)
+Nifty50 stock selected: BHARTIARTL.NS
+Downloading data for ticker: BHARTIARTL.NS
+Error fetching stock data for BHARTIARTL.NS: arg must be a list, tuple, 1-d array, or Series
+User selected: BHARTIARTL (Nifty50)
+Nifty50 stock selected: BHARTIARTL.NS
+Downloading data for ticker: BHARTIARTL.NS
+Error fetching stock data for BHARTIARTL.NS: arg must be a list, tuple, 1-d array, or Series
+User selected: KOTAKBANK (Nifty50)
+Nifty50 stock selected: KOTAKBANK.NS
+Downloading data for ticker: KOTAKBANK.NS
+Error fetching stock data for KOTAKBANK.NS: arg must be a list, tuple, 1-d array, or Series
+User selected: LT (Nifty50)
+Nifty50 stock selected: LT.NS
+Downloading data for ticker: LT.NS
+Error fetching stock data for LT.NS: arg must be a list, tuple, 1-d array, or Series
+User selected: LT (Nifty50)
+Nifty50 stock selected: LT.NS
+Downloading data for ticker: ZOMATO.NS
+Error fetching stock data for ZOMATO.NS: arg must be a list, tuple, 1-d array, or Series
