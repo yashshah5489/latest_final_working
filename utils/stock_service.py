@@ -107,27 +107,69 @@ def get_stock_data(ticker, period="1mo", interval="1d"):
         expected_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
         missing_columns = [col for col in expected_columns if col not in stock_data.columns]
         
+        # if missing_columns:
+        #     print(f"Warning: Missing columns: {missing_columns}")
+        #     # Add missing columns with reasonable defaults
+        #     for col in missing_columns:
+        #         if col == 'Volume':
+        #             stock_data['Volume'] = 0  # Default volume
+        #         else:
+        #             # For OHLC, use available price columns
+        #             price_cols = [c for c in ['Open', 'High', 'Low', 'Close'] if c in stock_data.columns]
+        #             if price_cols:
+        #                 stock_data[col] = stock_data[price_cols[0]]
+        #             else:
+        #                 print(f"No price data available for {ticker}")
+        #                 return None
+
+        # # Convert all columns to numeric values
+        # for col in stock_data.columns:
+        #     stock_data[col] = pd.to_numeric(stock_data[col], errors='coerce')
+        
+        # # Fill any NaN values (using newer pandas methods instead of deprecated ones)
+        # stock_data = stock_data.ffill().bfill()
+
+
+        # Data handling for missing columns - CORRECTED
         if missing_columns:
             print(f"Warning: Missing columns: {missing_columns}")
             # Add missing columns with reasonable defaults
             for col in missing_columns:
                 if col == 'Volume':
                     stock_data['Volume'] = 0  # Default volume
-                else:
-                    # For OHLC, use available price columns
-                    price_cols = [c for c in ['Open', 'High', 'Low', 'Close'] if c in stock_data.columns]
-                    if price_cols:
-                        stock_data[col] = stock_data[price_cols[0]]
+                elif col in ['Open', 'High', 'Low', 'Close']:
+                    # For OHLC, use more appropriate substitution logic
+                    available_cols = [c for c in ['Open', 'High', 'Low', 'Close'] if c in stock_data.columns]
+                    if available_cols:
+                        # If Close is missing but other price data exists, use appropriate substitution
+                        if col == 'Close' and 'Open' in available_cols:
+                            stock_data['Close'] = stock_data['Open']
+                        elif col == 'High' and 'Close' in available_cols:
+                            stock_data['High'] = stock_data['Close']
+                        elif col == 'Low' and 'Close' in available_cols:
+                            stock_data['Low'] = stock_data['Close']
+                        elif col == 'Open' and 'Close' in available_cols:
+                            stock_data['Open'] = stock_data['Close']
+                        else:
+                            stock_data[col] = stock_data[available_cols[0]]
                     else:
                         print(f"No price data available for {ticker}")
                         return None
-        
-        # Convert all columns to numeric values
+
+        # Convert all columns to numeric values - CORRECTED
         for col in stock_data.columns:
+            # Keep track of non-numeric values before coercing
+            non_numeric_count = stock_data[col].apply(lambda x: not pd.api.types.is_numeric_dtype(type(x))).sum()
+            if non_numeric_count > 0:
+                print(f"Warning: {non_numeric_count} non-numeric values found in column {col}")
+            
+            # Convert with coercion but fill NaN values appropriately
             stock_data[col] = pd.to_numeric(stock_data[col], errors='coerce')
-        
-        # Fill any NaN values (using newer pandas methods instead of deprecated ones)
-        stock_data = stock_data.ffill().bfill()
+
+        # Fill NaN values using forward fill method
+        stock_data = stock_data.fillna(method='ffill')
+        # Then backward fill any remaining NaNs at the beginning
+        stock_data = stock_data.fillna(method='bfill')
         
         if len(stock_data) == 0:
             print(f"No valid data rows for {ticker}")

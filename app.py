@@ -488,7 +488,7 @@ def display_stock_analysis():
                 st.plotly_chart(fig, use_container_width=True)
                 
                 # Additional analysis tabs
-                stock_analysis_tabs = st.tabs(["Key Metrics", "Technical Indicators", "Fundamental Data", "Moving Averages"])
+                stock_analysis_tabs = st.tabs(["Key Metrics", "Technical Indicators", "Fundamental Data"])#, "Moving Averages"])
                 
                 with stock_analysis_tabs[0]:
                     # Key Metrics
@@ -577,7 +577,7 @@ def display_stock_analysis():
                             # RSI
                             rsi = tech_indicators.get('rsi', 'N/A')
                             if isinstance(rsi, (int, float)):
-                                rsi_color = "red" if rsi > 70 else "green" if rsi < 30 else "black"
+                                rsi_color = "red" if rsi > 70 else "green" if rsi < 30 else "white"
                                 rsi_text = f"<span style='color:{rsi_color}'>{rsi:.2f}</span>"
                             else:
                                 rsi_text = "N/A"
@@ -597,7 +597,7 @@ def display_stock_analysis():
                             stoch_k = tech_indicators.get('stochK', 'N/A')
                             stoch_d = tech_indicators.get('stochD', 'N/A')
                             if isinstance(stoch_k, (int, float)):
-                                stoch_color = "red" if stoch_k > 80 else "green" if stoch_k < 20 else "black"
+                                stoch_color = "red" if stoch_k > 80 else "green" if stoch_k < 20 else "white"
                                 stoch_k_text = f"<span style='color:{stoch_color}'>{stoch_k:.2f}</span>"
                             else:
                                 stoch_k_text = "N/A"
@@ -627,10 +627,10 @@ def display_stock_analysis():
                             
                             if isinstance(upper_band, (int, float)) and isinstance(lower_band, (int, float)) and price:
                                 band_status = "Near Upper Band" if price > (upper_band * 0.95) else "Near Lower Band" if price < (lower_band * 1.05) else "Middle"
-                                band_color = "red" if band_status == "Near Upper Band" else "green" if band_status == "Near Lower Band" else "black"
+                                band_color = "red" if band_status == "Near Upper Band" else "green" if band_status == "Near Lower Band" else "white"
                             else:
                                 band_status = "N/A"
-                                band_color = "black"
+                                band_color = "white"
                                 
                             # ATR - Volatility
                             atr = tech_indicators.get('atr', 'N/A')
@@ -777,6 +777,11 @@ def display_stock_analysis():
                         ma20 = stock_data['Close'].rolling(window=20).mean().iloc[-1]
                         ma50 = stock_data['Close'].rolling(window=50).mean().iloc[-1]
                         ma200 = stock_data['Close'].rolling(window=200).mean().iloc[-1]
+
+                        # # Moving averages calculation - CORRECTED
+                        # ma20 = stock_data['Close'].rolling(window=20, min_periods=20).mean()
+                        # ma50 = stock_data['Close'].rolling(window=50, min_periods=50).mean()
+                        # ma200 = stock_data['Close'].rolling(window=200, min_periods=200).mean()
                         
                         last_close = stock_data['Close'].iloc[-1]
                         
@@ -806,42 +811,82 @@ def display_stock_analysis():
                         # Use markdown to display the table
                         st.markdown(tech_html, unsafe_allow_html=True)
                 
+                # with stock_analysis_tabs[1]:
+                #     # Moving Averages Chart
+                #     ma_fig = go.Figure()
+                    
+                #     # Add price with numpy array values
+                #     ma_fig.add_trace(go.Scatter(
+                #         x=stock_data.index,
+                #         y=stock_data['Close'].values,  # Convert to numpy array
+                #         mode='lines',
+                #         name='Close Price',
+                #         line=dict(color='#FFFFFF', width=2)
+                #     ))
+                    
+                #     # Add moving averages with numpy array values
+                #     ma20_series = stock_data['Close'].rolling(window=20).mean()
+                #     ma_fig.add_trace(go.Scatter(
+                #         x=stock_data.index,
+                #         y=ma20_series.values,  # Convert to numpy array
+                #         mode='lines',
+                #         name='20-Day MA',
+                #         line=dict(color='#00BD9D', width=1.5)
+                #     ))
+                    
+                #     ma50_series = stock_data['Close'].rolling(window=50).mean()
+                #     ma_fig.add_trace(go.Scatter(
+                #         x=stock_data.index,
+                #         y=ma50_series.values,  # Convert to numpy array
+                #         mode='lines',
+                #         name='50-Day MA',
+                #         line=dict(color='#FF9800', width=1.5)
+                #     ))
+                    
+                #     ma200_series = stock_data['Close'].rolling(window=200).mean()
+                #     ma_fig.add_trace(go.Scatter(
+                #         x=stock_data.index,
+                #         y=ma200_series.values,  # Convert to numpy array
+                #         mode='lines',
+                #         name='200-Day MA',
+                #         line=dict(color='#F44336', width=1.5)
+                #     ))
                 with stock_analysis_tabs[1]:
                     # Moving Averages Chart
                     ma_fig = go.Figure()
                     
-                    # Add price with numpy array values
+                    # Add price with consistent data type
                     ma_fig.add_trace(go.Scatter(
                         x=stock_data.index,
-                        y=stock_data['Close'].values,  # Convert to numpy array
+                        y=stock_data['Close'],
                         mode='lines',
                         name='Close Price',
                         line=dict(color='#FFFFFF', width=2)
                     ))
                     
-                    # Add moving averages with numpy array values
-                    ma20_series = stock_data['Close'].rolling(window=20).mean()
+                    # Add moving averages with consistent parameters
+                    ma20_series = stock_data['Close'].rolling(window=20, min_periods=20).mean()
                     ma_fig.add_trace(go.Scatter(
                         x=stock_data.index,
-                        y=ma20_series.values,  # Convert to numpy array
+                        y=ma20_series.values,
                         mode='lines',
                         name='20-Day MA',
                         line=dict(color='#00BD9D', width=1.5)
                     ))
                     
-                    ma50_series = stock_data['Close'].rolling(window=50).mean()
+                    ma50_series = stock_data['Close'].rolling(window=50, min_periods=50).mean()
                     ma_fig.add_trace(go.Scatter(
                         x=stock_data.index,
-                        y=ma50_series.values,  # Convert to numpy array
+                        y=ma50_series.values,
                         mode='lines',
                         name='50-Day MA',
                         line=dict(color='#FF9800', width=1.5)
                     ))
                     
-                    ma200_series = stock_data['Close'].rolling(window=200).mean()
+                    ma200_series = stock_data['Close'].rolling(window=200, min_periods=200).mean()
                     ma_fig.add_trace(go.Scatter(
                         x=stock_data.index,
-                        y=ma200_series.values,  # Convert to numpy array
+                        y=ma200_series.values,
                         mode='lines',
                         name='200-Day MA',
                         line=dict(color='#F44336', width=1.5)
@@ -1038,46 +1083,168 @@ def display_stock_analysis():
 st.title("🇮🇳 India-Focused Financial Assistant")
 
 # Create placeholders in the sidebar for dynamic content
-with st.sidebar:
-    # Create a placeholder for the news sources section
-    news_section = st.container()
+# with st.sidebar:
+#     # Create a placeholder for the news sources section
+#     news_section = st.container()
     
-    # Create a placeholder for the financial wisdom section
-    wisdom_section = st.container()
+#     # Create a placeholder for the financial wisdom section
+#     wisdom_section = st.container()
     
-    with news_section:
-        if "news_sources" in st.session_state and st.session_state.news_sources:
-            st.markdown("### 📰 Latest News Sources")
-            for i, source in enumerate(st.session_state.news_sources[:3]):  # Display top 3 sources
-                # Make sure we have all the required keys
-                title = source.get('title', 'Article')
-                url = source.get('url', '#')
-                date = source.get('date', '')
-                st.markdown(f"{i+1}. [{title}]({url}) {date}")
+#     with news_section:
+#         if "news_sources" in st.session_state and st.session_state.news_sources:
+#             st.markdown("### 📰 Latest News Sources")
+#             for i, source in enumerate(st.session_state.news_sources[:3]):  # Display top 3 sources
+#                 # Make sure we have all the required keys
+#                 title = source.get('title', 'Article')
+#                 url = source.get('url', '#')
+#                 date = source.get('date', '')
+#                 st.markdown(f"{i+1}. [{title}]({url}) {date}")
     
-    with wisdom_section:
-        # Display financial wisdom if available
-        if "current_financial_wisdom" in st.session_state and st.session_state.current_financial_wisdom:
-            st.markdown("---")
-            with st.expander("💡 Financial Insights", expanded=True):
-                # Format and display the financial wisdom in a scrollable container
-                wisdom_text = st.session_state.current_financial_wisdom
+#     with wisdom_section:
+#         # Display financial wisdom if available
+#         if "current_financial_wisdom" in st.session_state and st.session_state.current_financial_wisdom:
+#             st.markdown("---")
+#             with st.expander("💡 Financial Insights", expanded=True):
+#                 # Format and display the financial wisdom in a scrollable container
+#                 wisdom_text = st.session_state.current_financial_wisdom
                 
-                # Add custom CSS for the scrollable container
+#                 # Add custom CSS for the scrollable container
+#                 st.markdown("""
+#                 <style>
+#                 .scrollable-container {
+#                     height: 200px;
+#                     overflow-y: auto;
+#                     border-radius: 5px;
+#                     padding: 10px;
+#                     background-color: rgba(0, 0, 0, 0.1);
+#                 }
+#                 </style>
+#                 """, unsafe_allow_html=True)
+                
+#                 # Display wisdom text in the scrollable container
+#                 st.markdown(f"""<div class="scrollable-container">{wisdom_text}</div>""", unsafe_allow_html=True)
+    
+#     st.markdown("---")
+
+# with st.sidebar:
+#     # Create a container for both news and wisdom
+#     combined_section = st.container()
+    
+#     with combined_section:
+#         st.markdown("### 📊 Market Insights")
+        
+#         # News section
+#         st.markdown("#### 📰 Latest News Sources")
+        
+#         # Create scrollable container for news
+#         news_container = st.container()
+#         news_container.markdown("""
+#         <style>
+#         .news-container {
+#             max-height: 200px;
+#             overflow-y: auto;
+#             padding: 5px;
+#         }
+#         </style>
+#         """, unsafe_allow_html=True)
+        
+#         # Display news using Streamlit's native markdown
+#         with news_container:
+#             if "news_sources" in st.session_state and st.session_state.news_sources:
+#                 for i, source in enumerate(st.session_state.news_sources[:5]):
+#                     title = source.get('title', 'Article')
+#                     url = source.get('url', '#')
+#                     date = source.get('date', '')
+#                     st.markdown(f"{i+1}. [{title}]({url}) {date}")
+#             else:
+#                 st.markdown("No recent news available.")
+        
+#         # Financial wisdom section
+#         st.markdown("#### 💡 Financial Insights")
+        
+#         # Create scrollable container for wisdom
+#         wisdom_container = st.container()
+#         wisdom_container.markdown("""
+#         <style>
+#         .wisdom-container {
+#             max-height: 200px;
+#             overflow-y: auto;
+#             padding: 5px;
+#         }
+#         </style>
+#         """, unsafe_allow_html=True)
+        
+#         # Display wisdom using Streamlit's native markdown
+#         with wisdom_container:
+#             if "current_financial_wisdom" in st.session_state and st.session_state.current_financial_wisdom:
+#                 st.markdown(st.session_state.current_financial_wisdom)
+#             else:
+#                 st.markdown("No insights available.")
+    
+#     st.markdown("---")
+
+
+
+with st.sidebar:
+    # Create a container for both news and wisdom
+    combined_section = st.container()
+    
+    with combined_section:
+        st.markdown("### 📊 Market Insights")
+        
+        # News section
+        st.markdown("#### 📰 Latest News Sources")
+        
+        # Set up CSS for scrollable containers
+        st.markdown("""
+        <style>
+        .scrollable-container {
+            max-height: 200px;
+            overflow-y: auto;
+            border-radius: 5px;
+            background-color: rgba(20, 20, 20, 0.2);
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        news_container = st.container()
+        # News content
+        with news_container:
+            if "news_sources" in st.session_state and st.session_state.news_sources:
+                news_html = ""
+                for i, source in enumerate(st.session_state.news_sources[:5]):
+                    title = source.get('title', 'Article')
+                    url = source.get('url', '#')
+                    date = source.get('date', '')
+                    news_html += f"{i+1}. <a href='{url}' target='_blank'>{title}</a> {date}<br><br>"
+                
+                st.markdown(f"<div class='scrollable-container'>{news_html}</div>", unsafe_allow_html=True)
+            else:
+                st.markdown("No recent news available.")
+        
+        # Financial wisdom section
+        st.markdown("#### 💡 Financial Insights")
+        
+        # For financial wisdom, we'll use Streamlit's built-in markdown in a container
+        wisdom_expander = st.expander("Financial Insights", expanded=True)
+        
+        with wisdom_expander:
+            if "current_financial_wisdom" in st.session_state and st.session_state.current_financial_wisdom:
+                # Use a container with custom CSS for scrolling
                 st.markdown("""
                 <style>
-                .scrollable-container {
-                    height: 200px;
+                [data-testid="stExpander"] div[data-testid="stMarkdownContainer"] {
+                    max-height: 300px;
                     overflow-y: auto;
-                    border-radius: 5px;
-                    padding: 10px;
-                    background-color: rgba(0, 0, 0, 0.1);
                 }
                 </style>
                 """, unsafe_allow_html=True)
                 
-                # Display wisdom text in the scrollable container
-                st.markdown(f"""<div class="scrollable-container">{wisdom_text}</div>""", unsafe_allow_html=True)
+                # Display wisdom as markdown directly
+                st.markdown(st.session_state.current_financial_wisdom)
+            else:
+                st.markdown("No insights available.")
     
     st.markdown("---")
 
