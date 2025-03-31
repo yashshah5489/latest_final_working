@@ -220,7 +220,7 @@ def display_stock_analysis():
                     yaxis_title='Price (₹)',
                     yaxis2=dict(
                         title='Volume',
-                        titlefont=dict(color='rgba(100, 100, 255, 0.8)'),
+                        title_font=dict(color='rgba(100, 100, 255, 0.8)'),
                         tickfont=dict(color='rgba(100, 100, 255, 0.8)'),
                         overlaying='y',
                         side='right',
