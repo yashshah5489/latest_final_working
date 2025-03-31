@@ -1,0 +1,64 @@
+streamlit run app.py
+
+  You can now view your Streamlit app in your browser.
+
+  URL: http://localhost:5000
+
+User selected: WIPRO (Nifty50)
+Index symbol extracted: Nifty50
+Downloading data for ticker: ^NSEI
+Error fetching stock data for ^NSEI: arg must be a list, tuple, 1-d array, or Series
+User selected: WIPRO (Nifty50)
+Index symbol extracted: Nifty50
+Downloading data for ticker: WIPRO.NS
+Error fetching stock data for WIPRO.NS: arg must be a list, tuple, 1-d array, or Series
+User selected: WIPRO (Nifty50)
+Index symbol extracted: Nifty50
+Downloading data for ticker: WIPRO.NS
+Error fetching stock data for WIPRO.NS: arg must be a list, tuple, 1-d array, or Series
+User selected: WIPRO (Nifty50)
+Index symbol extracted: Nifty50
+Downloading data for ticker: WIPRO.NS
+Error fetching stock data for WIPRO.NS: arg must be a list, tuple, 1-d array, or Series
+User selected: TITAN (Sensex)
+Stock symbol generated: TITAN.NS
+Downloading data for ticker: TITAN.NS
+Error fetching stock data for TITAN.NS: arg must be a list, tuple, 1-d array, or Series
+User selected: TCS (Nifty50)
+Index symbol extracted: Nifty50
+Downloading data for ticker: ^NSEI
+Error fetching stock data for ^NSEI: arg must be a list, tuple, 1-d array, or Series
+User selected: TCS (Nifty50)
+Index symbol extracted: Nifty50
+Downloading data for ticker: ^NSEI
+Error fetching stock data for ^NSEI: arg must be a list, tuple, 1-d array, or Series
+User selected: TCS (Nifty50)
+Index symbol extracted: Nifty50
+Downloading data for ticker: ZOMATO.NS
+Error fetching stock data for ZOMATO.NS: arg must be a list, tuple, 1-d array, or Series
+User selected: TCS (Nifty50)
+Index symbol extracted: Nifty50
+Downloading data for ticker: ZOMATO.NSE
+404 Client Error: Not Found for url: https://query2.finance.yahoo.com/v10/finance/quoteSummary/ZOMATO.NSE?modules=financialData%2CquoteType%2CdefaultKeyStatistics%2CassetProfile%2CsummaryDetail&corsDomain=finance.yahoo.com&formatted=false&symbol=ZOMATO.NSE&crumb=hh43awhSDgF
+
+1 Failed download:
+['ZOMATO.NSE']: AttributeError("'NoneType' object has no attribute 'update'")
+No data found for ticker ZOMATO.NSE
+Trying with NSE extension: ZOMATO.NSE.NS
+404 Client Error: Not Found for url: https://query2.finance.yahoo.com/v10/finance/quoteSummary/ZOMATO.NSE.NS?modules=financialData%2CquoteType%2CdefaultKeyStatistics%2CassetProfile%2CsummaryDetail&corsDomain=finance.yahoo.com&formatted=false&symbol=ZOMATO.NSE.NS&crumb=hh43awhSDgF
+
+1 Failed download:
+['ZOMATO.NSE.NS']: AttributeError("'NoneType' object has no attribute 'update'")
+Still no data found for ZOMATO.NSE after trying alternatives
+User selected: TCS (Nifty50)
+Index symbol extracted: Nifty50
+Downloading data for ticker: ZOMATO.BS
+
+1 Failed download:
+['ZOMATO.BS']: YFPricesMissingError('possibly delisted; no price data found  (period=1mo) (Yahoo error = "No data found, symbol may be delisted")')
+No data found for ticker ZOMATO.BS
+Trying with NSE extension: ZOMATO.BS.NS
+
+1 Failed download:
+['ZOMATO.BS.NS']: YFPricesMissingError('possibly delisted; no price data found  (period=1mo) (Yahoo error = "No data found, symbol may be delisted")')
+Still no data found for ZOMATO.BS after trying alternatives

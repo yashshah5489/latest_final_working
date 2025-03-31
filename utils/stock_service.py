@@ -49,16 +49,50 @@ def get_stock_data(ticker, period="1mo", interval="1d"):
         
         if stock_data.empty:
             print(f"No data found for ticker {ticker}")
+            
             # Try alternative for Indian stocks if no data found
             if ticker.endswith(".NS"):
+                # If NSE ticker doesn't work, try BSE
                 alternative = ticker.replace(".NS", ".BO")
-                print(f"Trying alternative symbol: {alternative}")
+                print(f"Trying BSE alternative: {alternative}")
                 stock_data = yf.download(alternative, period=period, interval=interval, progress=False, auto_adjust=True)
-            elif not ticker.startswith('^') and not ticker.endswith((".NS", ".BO")):
-                # Try with .NS extension
-                alternative = f"{ticker}.NS"
-                print(f"Trying with NSE extension: {alternative}")
+                
+                if not stock_data.empty and 'Close' in stock_data.columns:
+                    print(f"Found data with BSE extension")
+                    ticker = alternative  # Update ticker to the working alternative
+            
+            elif ticker.endswith(".BO") or ticker.endswith(".BS"):
+                # If BSE ticker doesn't work, try NSE
+                if ticker.endswith(".BO"):
+                    alternative = ticker.replace(".BO", ".NS")
+                else:
+                    alternative = ticker.replace(".BS", ".NS")
+                print(f"Trying NSE alternative: {alternative}")
                 stock_data = yf.download(alternative, period=period, interval=interval, progress=False, auto_adjust=True)
+                
+                if not stock_data.empty and 'Close' in stock_data.columns:
+                    print(f"Found data with NSE extension")
+                    ticker = alternative  # Update ticker to the working alternative
+            
+            elif not ticker.startswith('^') and not ticker.endswith((".NS", ".BO", ".BS")):
+                # For plain symbols without extensions, try first NSE then BSE
+                # First try NSE (more liquid market usually)
+                nse_alternative = f"{ticker}.NS"
+                print(f"Trying with NSE extension: {nse_alternative}")
+                stock_data = yf.download(nse_alternative, period=period, interval=interval, progress=False, auto_adjust=True)
+                
+                if not stock_data.empty and 'Close' in stock_data.columns:
+                    print(f"Found data with NSE extension")
+                    ticker = nse_alternative  # Update ticker to the working alternative
+                else:
+                    # If NSE fails, try BSE
+                    bse_alternative = f"{ticker}.BO"
+                    print(f"Trying with BSE extension: {bse_alternative}")
+                    stock_data = yf.download(bse_alternative, period=period, interval=interval, progress=False, auto_adjust=True)
+                    
+                    if not stock_data.empty and 'Close' in stock_data.columns:
+                        print(f"Found data with BSE extension")
+                        ticker = bse_alternative  # Update ticker to the working alternative
         
         if stock_data.empty:
             print(f"Still no data found for {ticker} after trying alternatives")
@@ -86,11 +120,13 @@ def get_stock_data(ticker, period="1mo", interval="1d"):
                         print(f"No price data available for {ticker}")
                         return None
         
-        # Clean up data - make sure all values are numeric
+        # Clean up data - make sure all values are numeric and properly formatted
         for col in expected_columns:
-            stock_data[col] = pd.to_numeric(stock_data[col], errors='coerce')
+            if col in stock_data.columns:
+                # Convert to numeric using Series, not arrays (to avoid the "arg must be a list, tuple..." error)
+                stock_data[col] = pd.to_numeric(stock_data[col], errors='coerce')
         
-        # Fill any NaN values to avoid plotting issues
+        # Fill any NaN values to avoid plotting issues - use Series methods, not array methods
         stock_data = stock_data.fillna(method='ffill').fillna(method='bfill')
         
         # Ensure we have data

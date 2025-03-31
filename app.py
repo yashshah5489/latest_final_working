@@ -249,45 +249,54 @@ def display_stock_analysis():
         if selected_option != "Search for a stock...":
             try:
                 print(f"User selected: {selected_option}")
-                # Check if it's an index or a stock
-                if "^" in selected_option or "NIFTY" in selected_option.upper():
-                    # Extract the index symbol from the parentheses
-                    if "(" in selected_option and ")" in selected_option:
-                        selected_stock = selected_option.split(" (")[1].rstrip(")")
-                        print(f"Index symbol extracted: {selected_stock}")
+                
+                # Handle the different formats of stock options
+                if "(" in selected_option and ")" in selected_option:
+                    # Extract the parts of the selection
+                    parts = selected_option.split(" (")
+                    stock_name = parts[0].strip()
+                    category = parts[1].strip().rstrip(")")
+                    
+                    # Case 1: Major indices with Yahoo Finance symbols
+                    if category in ["^NSEI", "^BSESN", "^NSEBANK", "NIFTYIT.NS", "NIFTYAUTO.NS", "NIFTYPHARMA.NS"]:
+                        selected_stock = category
+                        print(f"Index symbol directly used: {selected_stock}")
+                    
+                    # Case 2: Nifty50 stocks
+                    elif category == "Nifty50":
+                        selected_stock = f"{stock_name}.NS"
+                        print(f"Nifty50 stock selected: {selected_stock}")
+                    
+                    # Case 3: Sensex stocks
+                    elif category == "Sensex":
+                        selected_stock = f"{stock_name}.NS"
+                        print(f"Sensex stock selected: {selected_stock}")
+                    
+                    # Fallback
                     else:
-                        # Handle case where the format is unexpected
-                        if selected_option.startswith("Nifty 50"):
-                            selected_stock = "^NSEI"
-                        elif selected_option.startswith("Sensex"):
-                            selected_stock = "^BSESN"
-                        elif selected_option.startswith("Nifty Bank"):
-                            selected_stock = "^NSEBANK"
-                        elif "IT" in selected_option:
-                            selected_stock = "NIFTYIT.NS"
-                        elif "AUTO" in selected_option:
-                            selected_stock = "NIFTYAUTO.NS"
-                        elif "PHARMA" in selected_option:
-                            selected_stock = "NIFTYPHARMA.NS"
-                        else:
-                            # Default to Nifty 50
-                            selected_stock = "^NSEI"
-                            
-                        print(f"Index symbol assigned: {selected_stock}")
+                        selected_stock = f"{stock_name}.NS"
+                        print(f"Unknown category, using NSE: {selected_stock}")
+                
+                # Handle selections without parentheses
                 else:
-                    # It's a regular stock - check if it's from Nifty50 or Sensex
-                    if "Nifty50" in selected_option or "Sensex" in selected_option:
-                        if "(" in selected_option and ")" in selected_option:
-                            stock_name = selected_option.split(" (")[0]
-                            selected_stock = f"{stock_name}.NS"
-                            print(f"Stock symbol generated: {selected_stock}")
-                        else:
-                            # Unexpected format, just add .NS
-                            selected_stock = selected_option + ".NS"
+                    # Check if it's one of the known indices
+                    if selected_option == "Nifty 50":
+                        selected_stock = "^NSEI"
+                    elif selected_option == "Sensex":
+                        selected_stock = "^BSESN"
+                    elif selected_option == "Nifty Bank":
+                        selected_stock = "^NSEBANK"
+                    elif selected_option == "Nifty IT":
+                        selected_stock = "NIFTYIT.NS"
+                    elif selected_option == "Nifty Auto":
+                        selected_stock = "NIFTYAUTO.NS"
+                    elif selected_option == "Nifty Pharma":
+                        selected_stock = "NIFTYPHARMA.NS"
+                    # For regular stocks, add NSE extension
                     else:
-                        # Just add .NS extension
-                        selected_stock = selected_option + ".NS"
-                        print(f"Stock symbol generated: {selected_stock}")
+                        selected_stock = f"{selected_option}.NS"
+                    
+                    print(f"Direct selection: {selected_stock}")
                         
                 st.session_state.selected_stock = selected_stock
             except Exception as e:
@@ -296,6 +305,9 @@ def display_stock_analysis():
                 st.session_state.selected_stock = "^NSEI"
         
         # Custom stock input
+        # Help text with example of correct format for BSE stocks
+        st.caption("For BSE stocks, use format: STOCKNAME.BO (example: RELIANCE.BO)")
+        
         custom_stock = st.text_input("Or enter a specific stock symbol (add .NS for NSE or .BO for BSE):", 
                                      value="" if st.session_state.selected_stock in [entry for entry in stock_options if entry != "Search for a stock..."] else (st.session_state.selected_stock if st.session_state.selected_stock else ""))
         
@@ -799,12 +811,24 @@ with st.sidebar:
         if "current_financial_wisdom" in st.session_state and st.session_state.current_financial_wisdom:
             st.markdown("---")
             with st.expander("💡 Financial Insights", expanded=True):
-                # Format and display the financial wisdom
+                # Format and display the financial wisdom in a scrollable container
                 wisdom_text = st.session_state.current_financial_wisdom
-                # Limit the length to avoid overwhelming the sidebar
-                if len(wisdom_text) > 500:
-                    wisdom_text = wisdom_text[:500] + "..."
-                st.markdown(wisdom_text)
+                
+                # Add custom CSS for the scrollable container
+                st.markdown("""
+                <style>
+                .scrollable-container {
+                    height: 200px;
+                    overflow-y: auto;
+                    border-radius: 5px;
+                    padding: 10px;
+                    background-color: rgba(0, 0, 0, 0.1);
+                }
+                </style>
+                """, unsafe_allow_html=True)
+                
+                # Display wisdom text in the scrollable container
+                st.markdown(f"""<div class="scrollable-container">{wisdom_text}</div>""", unsafe_allow_html=True)
     
     st.markdown("---")
 
