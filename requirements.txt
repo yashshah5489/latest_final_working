@@ -7,3 +7,4 @@ python-dotenv
 streamlit
 tavily-python
 yfinance
+bcrypt
