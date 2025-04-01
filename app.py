@@ -225,9 +225,9 @@ def display_stock_analysis():
             "Nifty 50 (^NSEI)",
             "Sensex (^BSESN)",
             "Nifty Bank (^NSEBANK)",
-            "Nifty IT (NIFTYIT.NS)",
-            "Nifty Auto (NIFTYAUTO.NS)",
-            "Nifty Pharma (NIFTYPHARMA.NS)"
+            "Nifty IT (^CNXIT)",
+            "Nifty Auto (^CNXAUTO)",
+            "Nifty Pharma (^CNXPHARMA​)"
         ]
         stock_options.extend(indices)
         
@@ -258,7 +258,7 @@ def display_stock_analysis():
                     category = parts[1].strip().rstrip(")")
                     
                     # Case 1: Major indices with Yahoo Finance symbols
-                    if category in ["^NSEI", "^BSESN", "^NSEBANK", "NIFTYIT.NS", "NIFTYAUTO.NS", "NIFTYPHARMA.NS"]:
+                    if category in ["^NSEI", "^BSESN", "^NSEBANK", "^CNXIT", "^CNXAUTO", "^CNXPHARMA"]:
                         selected_stock = category
                         print(f"Index symbol directly used: {selected_stock}")
                     
@@ -287,11 +287,11 @@ def display_stock_analysis():
                     elif selected_option == "Nifty Bank":
                         selected_stock = "^NSEBANK"
                     elif selected_option == "Nifty IT":
-                        selected_stock = "NIFTYIT.NS"
+                        selected_stock = "^CNXIT"
                     elif selected_option == "Nifty Auto":
-                        selected_stock = "NIFTYAUTO.NS"
+                        selected_stock = "^CNXAUTO"
                     elif selected_option == "Nifty Pharma":
-                        selected_stock = "NIFTYPHARMA.NS"
+                        selected_stock = "^CNXPHARMA"
                     # For regular stocks, add NSE extension
                     else:
                         selected_stock = f"{selected_option}.NS"
@@ -319,7 +319,7 @@ def display_stock_analysis():
     with col2:
         # Time period selector
         time_periods = {"1 Week": "1wk", "1 Month": "1mo", "3 Months": "3mo", 
-                       "6 Months": "6mo", "1 Year": "1y", "5 Years": "5y"}
+                       "6 Months": "6mo", "1 Year": "1y", "2 Year": "2y","5 Years": "5y","10 years": "10y"}
         
         selected_period = st.selectbox("Select time period:", list(time_periods.keys()))
         st.session_state.time_period = time_periods[selected_period]
