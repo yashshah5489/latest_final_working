@@ -41,18 +41,18 @@ def get_financial_news(query):
             return get_fallback_news(mentioned_terms, query)
         
         # Parse user query to extract key topics
-        search_query = f"Indian finance {query}"
+        search_query = f"{query}"
         
         # Add common financial terms for better results
         financial_terms = [
             "RBI", "SEBI", "NSE", "BSE", "Sensex", "Nifty", 
-            "Indian economy", "fiscal policy", "monetary policy"
+            "Indian economy", "fiscal policy", "monetary policy","geopolitics","tradewar","tariff","global economy"
         ]
         
-        for term in financial_terms:
-            if term.lower() in query.lower():
-                search_query = f"{term} {query} latest news India"
-                break
+        # for term in financial_terms:
+        #     if term.lower() in query.lower():
+        #         search_query = f"{term} {query} latest news India"
+        #         break
         
         # Set up the Tavily API request
         url = "https://api.tavily.com/search"
@@ -65,6 +65,7 @@ def get_financial_news(query):
         payload = {
             "api_key": tavily_api_key,
             "query": search_query,
+            "topic":"general",
             "search_depth": "advanced",
             "include_domains": [
                 "economictimes.indiatimes.com",
@@ -78,8 +79,9 @@ def get_financial_news(query):
                 "nseindia.com",
                 "bseindia.com"
             ],
-            "max_results": 5,
-            "time_window": "1w"  # Last week
+            "max_results": 3,
+            "days": "90",  # Last week
+            "include_answer": True
         }
         
         # Make the API request
@@ -88,7 +90,7 @@ def get_financial_news(query):
         # Check if the request was successful
         if response.status_code == 200:
             search_response = response.json()
-            
+            # print("\n\nSearch Response: ",search_response)
             # Format the results
             if not search_response.get("results"):
                 return "No relevant financial news found for your query.", []
@@ -98,8 +100,10 @@ def get_financial_news(query):
         else:
             print(f"API request failed with status code: {response.status_code}")
             return get_fallback_news([], query)
-        
-        for i, result in enumerate(search_response.get("results", [])[:5]):
+        answer = search_response.get("answer", "No answer")
+        if answer:
+            formatted_news += f"**Answer:** {answer}\n\n"
+        for i, result in enumerate(search_response.get("results", [])[:3]):
             title = result.get("title", "No title")
             content = result.get("content", "No content")
             url = result.get("url", "#")
@@ -119,10 +123,6 @@ def get_financial_news(query):
             formatted_news += f"### {i+1}. {title}\n"
             formatted_news += f"**Date:** {formatted_date}\n\n"
             
-            # Truncate content if too long
-            if len(content) > 300:
-                content = content[:300] + "..."
-            
             formatted_news += f"{content}\n\n"
             formatted_news += f"[Read more]({url})\n\n"
             
@@ -132,7 +132,7 @@ def get_financial_news(query):
                 "url": url,
                 "date": formatted_date
             })
-        
+            print("\n\nFormatted News: ",formatted_news,"\n\nNews Source: ", news_sources)
         return formatted_news, news_sources
     
     except Exception as e:

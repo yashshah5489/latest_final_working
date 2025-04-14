@@ -167,9 +167,11 @@ def get_stock_data(ticker, period="1mo", interval="1d"):
             stock_data[col] = pd.to_numeric(stock_data[col], errors='coerce')
 
         # Fill NaN values using forward fill method
-        stock_data = stock_data.fillna(method='ffill')
+        # stock_data = stock_data.fillna(method='ffill')
+        stock_data = stock_data.ffill()
         # Then backward fill any remaining NaNs at the beginning
-        stock_data = stock_data.fillna(method='bfill')
+        # stock_data = stock_data.fillna(method='bfill')
+        stock_data = stock_data.bfill()
         
         if len(stock_data) == 0:
             print(f"No valid data rows for {ticker}")
@@ -456,16 +458,13 @@ def get_nifty50_list():
     try:
         # This is a simplified approach - in a production environment, you would fetch this from NSE API
         nifty50_stocks = [
-            "RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", 
-            "HINDUNILVR", "ITC", "SBIN", "BHARTIARTL", "KOTAKBANK",
-            "LT", "AXISBANK", "BAJFINANCE", "ASIANPAINT", "MARUTI",
-            "SUNPHARMA", "TITAN", "ULTRACEMCO", "JSWSTEEL", "TATAMOTORS",
-            "ADANIENT", "BAJAJFINSV", "WIPRO", "HCLTECH", "TECHM",
-            "NTPC", "M&M", "POWERGRID", "TATASTEEL", "NESTLEIND",
-            "GRASIM", "HINDALCO", "DRREDDY", "ADANIPORTS", "CIPLA",
-            "SBILIFE", "DIVISLAB", "INDUSINDBK", "EICHERMOT", "TATACONSUM",
-            "BRITANNIA", "HDFCLIFE", "APOLLOHOSP", "COALINDIA", "BAJAJ-AUTO",
-            "UPL", "HEROMOTOCO", "BPCL", "ONGC", "SHREECEM"
+            "ADANIENT","ADANIPORTS","APOLLOHOSP","ASIANPAINT","AXISBANK","BAJAJ-AUTO",
+            "BAJFINANCE","BAJAJFINSV","BEL","BHARTIARTL","CIPLA", "COALINDIA","DRREDDY",
+            "EICHERMOT","ETERNAL","GRASIM","HCLTECH","HDFCBANK","HDFCLIFE","HEROMOTOCO",
+            "HINDALCO","HINDUNILVR","ICICIBANK", "ITC","INDUSINDBK","INFY","JSWSTEEL",
+            "JIOFIN","KOTAKBANK","LT","M&M","MARUTI","NTPC","NESTLEIND","ONGC","POWERGRID",
+            "RELIANCE","SBILIFE", "SHRIRAMFIN","SBIN","SUNPHARMA","TCS","TATACONSUM",
+            "TATAMOTORS","TATASTEEL","TECHM","TITAN","TRENT","ULTRACEMCO","WIPRO"
         ]
         return nifty50_stocks
     except:
@@ -479,14 +478,13 @@ def get_sensex_list():
         list: List of Sensex stock symbols
     """
     try:
-        # This is a simplified approach - in a production environment, you would fetch this from BSE API
         sensex_stocks = [
-            "RELIANCE", "TCS", "HDFCBANK", "ICICIBANK", "INFY",
-            "BHARTIARTL", "KOTAKBANK", "LT", "HINDUNILVR", "SBIN",
-            "AXISBANK", "BAJFINANCE", "ITC", "MARUTI", "SUNPHARMA",
-            "TITAN", "ASIANPAINT", "ULTRACEMCO", "TATAMOTORS", "BAJAJFINSV",
-            "NTPC", "TECHM", "M&M", "POWERGRID", "HCLTECH",
-            "JSWSTEEL", "TATASTEEL", "NESTLEIND", "INDUSINDBK", "WIPRO"
+            "ADANIPORTS", "ASIANPAINT", "AXISBANK", "BAJAJFINSV",
+            "BAJFINANCE", "BHARTIARTL", "ETERNAL", "HCLTECH", "HDFCBANK",
+            "HINDUNILVR", "ICICIBANK", "INDUSINDBK", "INFY", "ITC","KOTAKBANK",
+            "LT", "M&M", "MARUTI", "NTPC", "NESTLEIND", "POWERGRID", 
+            "RELIANCE", "SBIN", "SUNPHARMA", "TCS", "TATAMOTORS", "TATASTEEL", 
+            "TECHM", "TITAN", "ULTRACEMCO"
         ]
         return sensex_stocks
     except:

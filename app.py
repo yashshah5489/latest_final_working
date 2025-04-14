@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import os
 import pandas as pd
 import plotly.graph_objects as go
@@ -111,8 +112,8 @@ def display_chat_interface():
                                 # Format and display the financial wisdom
                                 wisdom_text = wisdom
                                 # Limit the length to avoid overwhelming the sidebar
-                                if len(wisdom_text) > 500:
-                                    wisdom_text = wisdom_text[:500] + "..."
+                                # if len(wisdom_text) > 500:
+                                #     wisdom_text = wisdom_text[:500] + "..."
                                 st.markdown(wisdom_text)
                     
                     # Check if query is stock-specific or index-specific
@@ -146,17 +147,39 @@ def display_chat_interface():
                                 print(f"Error fetching index data for {index_name}: {str(e)}")
                     
                     # If no index detected, try to find stocks
-                    if not index_detected and any(keyword in query_lower for keyword in ["stock", "share", "nse", "bse", "price", "ltd", "limited"]):
+                    if not index_detected:
+                        user_query = user_query.replace("?", "").replace(",", "").replace(".", "").replace("!", "")
+                        user_query = user_query.replace("(", "").replace(")", "").replace("[", "").replace("]", "")
+                        user_query = user_query.replace("'", "").replace('"', "").replace("`", "")
                         # Try to extract stock name/symbol from query
-                        import re
-                        stock_matches = re.findall(r'\b[A-Za-z]+(?:\s[A-Za-z]+)*\b', user_query)
+                        stock_matches = user_query.split()
                         
                         # Define common words to ignore
                         common_words = ['the', 'and', 'for', 'about', 'what', 'how', 'stock', 'share', 
-                                        'price', 'market', 'india', 'indian', 'should', 'could', 'would', 
-                                        'invest', 'investment', 'trade', 'trading', 'buy', 'sell', 'tell', 
+                                        'price', 'market', 'should', 'could', 'would', 'could','shall','might',
+                                        'high','low','year','month','range','week','day','open','to','in',
+                                        'close','last','previous','today','tomorrow','yesterday','recent',
+                                        'elaborate','explain','tell','show','give','provide','help','assist',
+                                        'understand','learn','know','information','details','data','analysis',
+                                        'investment', 'trading', 'buy', 'sell', 'tell', 'invest','trade', 'was','were',
+                                        'is','are','am','be','been','being','do','does','did','doing','given','latest','news','headlines',
+                                        'current','financial','wisdom','insight','advice',
+                                        'recommendation','suggestion','opinion','report','summary','tech','tariff','geopolitics',
+                                        'tradewar','global economy','inflation','interest','bond yield','rate'
+                                        'currency','exchange','gold','silver','oil','crude','natural','gas','energy',
+                                        'commodity','trends','forecast','prediction','outlook','metal','auto','banking',
+                                        'real estate','realestate','property','investment','investments','funds',
+                                        'mutual','fund','etf','exchange','equity','debt','portfolio','asset','allocation',
+                                        'diversification','hedge','analyst','research','fmcg','consumer','durables',
+                                        'pharma','healthcare','technology','it','telecom','infrastructure','power',
+                                        'utilities','transportation','logistics','retail','ecommerce','automobile',
+                                        'aviation','hospitality','travel','tourism','media','entertainment',
+                                        'television','broadcasting','radio','print','digital','advertising','marketing',
+                                        'telecommunication','internet','broadband','satellite','cable',
+                                        'stock','cap','capitalization','capital','dividend','traded','volume',
+                                        'yield','return','risk','reward','performance','strategy',
                                         'me', 'please', 'thanks', 'you', 'your', 'my', 'can', 'will']
-                        
+                        print("Potential matches:", stock_matches)
                         for potential_stock in stock_matches:
                             if len(potential_stock) > 2 and potential_stock.lower() not in common_words:
                                 try:
@@ -179,7 +202,7 @@ def display_chat_interface():
                                             break
                                     except:
                                         pass
-                    
+                    print("\n\nStock Data:",stock_data)
                     # Generate LLM response with chat history context
                     response = generate_llm_response(
                         user_query, 
@@ -226,8 +249,7 @@ def display_stock_analysis():
             "Sensex (^BSESN)",
             "Nifty Bank (^NSEBANK)",
             "Nifty IT (^CNXIT)",
-            "Nifty Auto (^CNXAUTO)",
-            "Nifty Pharma (^CNXPHARMA​)"
+            "Nifty Auto (^CNXAUTO)"
         ]
         stock_options.extend(indices)
         
@@ -256,9 +278,9 @@ def display_stock_analysis():
                     parts = selected_option.split(" (")
                     stock_name = parts[0].strip()
                     category = parts[1].strip().rstrip(")")
-                    
+                    print(f"Parsed stock name: {stock_name}, category: {category}")
                     # Case 1: Major indices with Yahoo Finance symbols
-                    if category in ["^NSEI", "^BSESN", "^NSEBANK", "^CNXIT", "^CNXAUTO", "^CNXPHARMA"]:
+                    if category in ["^NSEI", "^BSESN", "^NSEBANK", "^CNXIT", "^CNXAUTO"]:
                         selected_stock = category
                         print(f"Index symbol directly used: {selected_stock}")
                     
@@ -269,7 +291,7 @@ def display_stock_analysis():
                     
                     # Case 3: Sensex stocks
                     elif category == "Sensex":
-                        selected_stock = f"{stock_name}.NS"
+                        selected_stock = f"{stock_name}.BO"
                         print(f"Sensex stock selected: {selected_stock}")
                     
                     # Fallback
@@ -290,8 +312,7 @@ def display_stock_analysis():
                         selected_stock = "^CNXIT"
                     elif selected_option == "Nifty Auto":
                         selected_stock = "^CNXAUTO"
-                    elif selected_option == "Nifty Pharma":
-                        selected_stock = "^CNXPHARMA"
+
                     # For regular stocks, add NSE extension
                     else:
                         selected_stock = f"{selected_option}.NS"
@@ -499,7 +520,7 @@ def display_stock_analysis():
                         metrics_data = {
                             "PE Ratio": stock_info.get('trailingPE', 'N/A'),
                             "Forward PE": stock_info.get('forwardPE', 'N/A'),
-                            "PEG Ratio": stock_info.get('pegRatio', 'N/A'),
+                            # "PEG Ratio": stock_info.get('pegRatio', 'N/A'),
                             "Price to Book": stock_info.get('priceToBook', 'N/A'),
                             "Book Value": stock_info.get('bookValue', 'N/A'),
                             "Dividend Yield": f"{stock_info.get('dividendYield', 0):.2f}%" if stock_info.get('dividendYield') is not None else "N/A"
@@ -1221,32 +1242,185 @@ with st.sidebar:
                 
                 st.markdown(f"<div class='scrollable-container'>{news_html}</div>", unsafe_allow_html=True)
             else:
-                st.markdown("No recent news available.")
+                st.markdown(f"<div class='scrollable-container'>No recent news available.</div>", unsafe_allow_html=True)
         
         # Financial wisdom section
         st.markdown("#### 💡 Financial Insights")
         
         # For financial wisdom, we'll use Streamlit's built-in markdown in a container
-        wisdom_expander = st.expander("Financial Insights", expanded=True)
+        wisdom_expander = st.expander("Financial Insights")
         
         with wisdom_expander:
             if "current_financial_wisdom" in st.session_state and st.session_state.current_financial_wisdom:
                 # Use a container with custom CSS for scrolling
                 st.markdown("""
                 <style>
-                [data-testid="stExpander"] div[data-testid="stMarkdownContainer"] {
-                    max-height: 300px;
+                .scrollable-container {
+                    max-height: 200px;
                     overflow-y: auto;
+                    border-radius: 5px;
+                    background-color: rgba(20, 20, 20, 0.2);
+                    padding: 10px;
+                    margin-bottom: 15px;
                 }
                 </style>
                 """, unsafe_allow_html=True)
                 
                 # Display wisdom as markdown directly
-                st.markdown(st.session_state.current_financial_wisdom)
+                st.markdown(f"<div class='scrollable-container'>{st.session_state.current_financial_wisdom}</div>",unsafe_allow_html=True)
             else:
                 st.markdown("No insights available.")
     
     st.markdown("---")
+
+# import streamlit as st
+
+# # This must be the first Streamlit command
+# if 'page_config_set' not in st.session_state:
+#     st.session_state.page_config_set = True
+
+# # Apply improved CSS for sidebar scrolling
+# st.markdown("""
+# <style>
+# /* Force the entire sidebar to have a fixed height and scroll */
+# [data-testid="stSidebar"] {
+#     height: 100vh !important;
+#     overflow: hidden !important;
+# }
+
+# [data-testid="stSidebar"] > div:first-child {
+#     height: 100% !important;
+#     overflow-y: auto !important;
+#     padding-bottom: 40px !important;
+# }
+
+# /* Create dedicated scrollable containers for news and insights */
+# .news-scroll-container {
+#     max-height: 30vh;
+#     overflow-y: auto;
+#     padding-right: 8px;
+#     margin-bottom: 15px;
+#     border-radius: 4px;
+# }
+
+# .insights-scroll-container {
+#     max-height: 40vh;
+#     overflow-y: auto;
+#     padding-right: 8px;
+#     margin-bottom: 15px;
+#     border-radius: 4px;
+# }
+
+# /* Style for section headers */
+# .section-header {
+#     margin-top: 20px;
+#     margin-bottom: 10px;
+#     font-weight: bold;
+# }
+
+# /* Style for news and insights */
+# .news-item {
+#     margin-bottom: 8px;
+#     padding-bottom: 5px;
+#     border-bottom: 1px solid rgba(250, 250, 250, 0.1);
+# }
+
+# .insight-block {
+#     margin-bottom: 15px;
+# }
+
+# /* Override Streamlit's default padding to maximize usable space */
+# .block-container {
+#     padding-top: 1rem !important;
+#     padding-bottom: 0 !important;
+# }
+
+# /* Fix expander content scrolling issues */
+# .streamlit-expanderContent {
+#     overflow: visible !important;
+#     max-height: none !important;
+# }
+# </style>
+# """, unsafe_allow_html=True)
+
+# # Sidebar content
+# with st.sidebar:
+#     # Market Insights Header
+#     st.markdown("### 📊 Market Insights")
+    
+#     # Latest News Sources
+#     st.markdown("#### 📰 Latest News Sources",unsafe_allow_html=True)
+    
+#     # Use HTML for scrollable news container
+#     news_html = '<div class="news-scroll-container">'
+    
+#     # Check for news sources and display them
+#     if "news_sources" in st.session_state and st.session_state.news_sources:
+#         for i, source in enumerate(st.session_state.news_sources[:5], start=1):
+#             title = source.get("title", "Article")
+#             url = source.get("url", "#")
+#             date = source.get("date", "Recent")
+#             news_html += f"""
+#             <div class="news-item">
+#                 {i}. <a href="{url}" target="_blank">{title}</a> <span style="color:#888">{date}</span>
+#             </div>
+#             """
+#     else:
+#         news_html += "<p>No recent news available.</p>"
+    
+#     news_html += '</div>'
+#     st.markdown(news_html, unsafe_allow_html=True)
+    
+#     # Financial Insights Section
+#     st.markdown("#### 💡 Financial Insights",unsafe_allow_html=True)
+    
+#     # Use HTML for scrollable insights container instead of an expander
+#     insights_html = '<div class="insights-scroll-container">'
+    
+#     if "past_financial_wisdom" in st.session_state and st.session_state.past_financial_wisdom:
+#         for i, insight in enumerate(st.session_state.past_financial_wisdom, start=1):
+#             insights_html += f"""
+#             <div class="insight-block">
+#                 <strong>Insight {i}:</strong><br>
+#                 {insight}
+#             </div>
+#             """
+    
+#     if "current_financial_wisdom" in st.session_state and st.session_state.current_financial_wisdom:
+#         next_index = len(st.session_state.get("past_financial_wisdom", [])) + 1
+#         insights_html += f"""
+#         <div class="insight-block">
+#             <strong>Insight {next_index}:</strong><br>
+#             {st.session_state.current_financial_wisdom}
+#         </div>
+#         """
+    
+#     if not st.session_state.get("past_financial_wisdom") and not st.session_state.get("current_financial_wisdom"):
+#         insights_html += "<p>No insights available.</p>"
+    
+#     insights_html += '</div>'
+#     st.markdown(insights_html, unsafe_allow_html=True)
+
+# # The rest of your code remains unchanged
+# # Create tabs
+# tab1, tab2 = st.tabs(["Financial Advice", "Stock Analysis"])
+
+# with tab1:
+#     display_chat_interface()
+
+# with tab2:
+#     display_stock_analysis()
+
+# # Footer
+# st.markdown("---")
+# st.markdown("### 🙏 Powered by Indian Financial Wisdom")
+# st.markdown("Data sources: Yahoo Finance, Groq LLM, Tavily, and Indian financial literature.")
+
+# # Handle any rerun flags set during the session
+# if st.session_state.rerun_flag:
+#     st.session_state.rerun_flag = False
+#     st.rerun()
+
 
 # Create tabs
 tab1, tab2 = st.tabs(["Financial Advice", "Stock Analysis"])
@@ -1259,8 +1433,11 @@ with tab2:
 
 # Footer
 st.markdown("---")
-st.markdown("### 🙏 Powered by Indian Financial Wisdom")
+st.markdown("### Powered by Indian Financial Wisdom")
 st.markdown("Data sources: Yahoo Finance, Groq LLM, Tavily, and Indian financial literature.")
+st.markdown("""### **Disclaimer**
+
+##### The information provided herein is for informational purposes only and does not constitute professional financial, investment, or legal advice. Users are strongly encouraged to consult with a certified financial advisor or other suitably qualified professional before making any financial decisions or investments.""")
 
 # Handle any rerun flags set during the session
 if st.session_state.rerun_flag:
